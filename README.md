@@ -10,6 +10,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white" alt="Prisma">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
+  <img src="https://img.shields.io/badge/tests-35%20passing-brightgreen?logo=vitest&logoColor=white" alt="35 tests passing">
 </p>
 
 > [!NOTE]
@@ -44,6 +45,29 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 - **La duración del turno se congela al reservar.** Cada turno guarda su hora de fin, así cambiar la duración de un servicio no altera los turnos ya dados.
 - **Precios en centavos** (`Int`) para evitar errores de redondeo.
 
+## Cómo se calculan los horarios libres
+
+El [motor de disponibilidad](src/lib/availability.ts) es lógica pura: recibe los horarios de atención, los intervalos ocupados (turnos activos y bloqueos), la duración del servicio y la hora actual, y devuelve los horarios en los que se puede reservar. Al no tocar la base ni el reloj del sistema, se testea de forma determinística ([tests](src/lib/availability.test.ts)).
+
+```
+ Franjas del día        09:00 ─────────── 13:00     16:00 ─────────── 20:00
+ Candidatos cada 15'    ▏▏▏▏▏▏▏▏▏▏▏▏▏▏▏▏               ▏▏▏▏▏▏▏▏▏▏▏▏▏▏▏▏
+ − ya pasados o con menos de 1 h de anticipación
+ − los que no terminan dentro de la franja
+ − los que se superponen con un turno o un bloqueo
+ = horarios ofrecidos
+```
+
+Casos contemplados por los tests:
+
+- Horario cortado y franjas desordenadas o solapadas
+- Turnos contiguos permitidos: los intervalos son semiabiertos `[inicio, fin)`, igual que en la restricción de la base
+- Franjas que terminan a la medianoche
+- Cambios de horario de verano: una franja de 01:00 a 04:00 dura 2 horas reales el día que se adelantan los relojes y la de 00:00 a 03:00 dura 4 el día que se atrasan
+- Fechas inválidas o inexistentes (`2026-02-30`, `2025-02-29`)
+
+La capa [`src/server/availability.ts`](src/server/availability.ts) busca en la base los datos del día y le delega el cálculo al motor.
+
 ## Modelo de datos
 
 ```
@@ -73,6 +97,7 @@ npm run dev          # http://localhost:3000
 | --- | --- |
 | `npm run dev` | Servidor de desarrollo |
 | `npm run build` | Build de producción |
+| `npm test` | Tests unitarios (Vitest) |
 | `npm run lint` / `npm run typecheck` | Linter y chequeo de tipos |
 | `npm run db:up` | Levanta la base en Docker |
 | `npm run db:migrate` | Crea y aplica migraciones |
@@ -82,7 +107,7 @@ npm run dev          # http://localhost:3000
 ## Plan de etapas
 
 - [x] **Etapa 1 — Base del proyecto:** Next.js + TypeScript, PostgreSQL en Docker, modelo de datos con restricciones de integridad, datos de demostración.
-- [ ] **Etapa 2 — Motor de disponibilidad:** cálculo de horarios libres a partir de horarios de atención, bloqueos, turnos existentes y zona horaria. Lógica pura con tests unitarios.
+- [x] **Etapa 2 — Motor de disponibilidad:** cálculo de horarios libres a partir de horarios de atención, bloqueos, turnos existentes y zona horaria. Lógica pura con tests unitarios.
 - [ ] **Etapa 3 — Reserva pública:** flujo de reserva paso a paso, validación con Zod, manejo de conflictos de horario y enlace de cancelación.
 - [ ] **Etapa 4 — Panel del negocio:** autenticación, agenda, gestión de servicios, horarios y bloqueos.
 - [ ] **Etapa 5 — Notificaciones:** email de confirmación y recordatorio.
