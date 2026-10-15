@@ -1,0 +1,32 @@
+# =============================================================
+# turnero — Base de datos local para desarrollo
+# =============================================================
+# Levantar:   docker compose up -d
+# Apagar:     docker compose down        (los datos se conservan)
+# Resetear:   docker compose down -v     (borra el volumen)
+# =============================================================
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: turnero-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: turnero
+      POSTGRES_PASSWORD: turnero
+      POSTGRES_DB: turnero
+    ports:
+      # 5433 en el host para no chocar con un Postgres instalado localmente.
+      - "5433:5432"
+    volumes:
+      # Desde Postgres 18 el directorio de datos vive en /var/lib/postgresql/<versión>,
+      # por eso se monta el directorio padre.
+      - turnero-db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U turnero -d turnero"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  turnero-db-data:

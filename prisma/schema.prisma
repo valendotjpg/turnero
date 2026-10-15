@@ -1,0 +1,135 @@
+// =============================================================
+// turnero — Modelo de datos
+// =============================================================
+// Todas las fechas se guardan como timestamptz (UTC). La zona horaria del
+// negocio se usa sólo para interpretar los horarios de atención y mostrar
+// los turnos.
+//
+// Regla que Prisma no puede expresar: dos turnos activos del mismo negocio
+// no pueden superponerse. Se impone en la base con una restricción EXCLUDE
+// (ver la migración inicial), así ni una condición de carrera entre dos
+// reservas simultáneas puede romperla.
+// =============================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Business {
+  id        String   @id @default(cuid())
+  name      String
+  /// Identificador para la URL pública de reservas: /reservar/<slug>
+  slug      String   @unique
+  /// Zona horaria IANA, p. ej. "America/Argentina/Buenos_Aires"
+  timezone  String   @default("America/Argentina/Buenos_Aires")
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  users        User[]
+  services     Service[]
+  workingHours WorkingHours[]
+  timeOff      TimeOff[]
+  appointments Appointment[]
+}
+
+/// Persona que administra el negocio desde el panel.
+model User {
+  id           String   @id @default(cuid())
+  businessId   String
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+}
+
+model Service {
+  id              String   @id @default(cuid())
+  businessId      String
+  name            String
+  description     String?
+  durationMinutes Int
+  /// Precio en centavos para evitar errores de redondeo con decimales.
+  priceCents      Int
+  /// Un servicio inactivo no se ofrece en la reserva pública, pero sus turnos
+  /// pasados se conservan.
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  business     Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointments Appointment[]
+
+  @@index([businessId])
+}
+
+/// Franja de atención semanal. Un mismo día puede tener varias franjas
+/// (p. ej. 9–13 y 16–20 para un horario cortado).
+model WorkingHours {
+  id          String @id @default(cuid())
+  businessId  String
+  /// 0 = domingo … 6 = sábado
+  weekday     Int
+  /// Minutos desde la medianoche en la zona horaria del negocio (540 = 09:00).
+  startMinute Int
+  endMinute   Int
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, weekday])
+}
+
+/// Bloqueo puntual de la agenda: feriados, vacaciones, un trámite.
+model TimeOff {
+  id         String   @id @default(cuid())
+  businessId String
+  startsAt   DateTime @db.Timestamptz(3)
+  endsAt     DateTime @db.Timestamptz(3)
+  reason     String?
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId, startsAt])
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+}
+
+model Appointment {
+  id            String            @id @default(cuid())
+  businessId    String
+  serviceId     String
+  startsAt      DateTime          @db.Timestamptz(3)
+  /// Se guarda (en vez de calcularse) para que cambiar la duración de un
+  /// servicio no altere los turnos ya dados.
+  endsAt        DateTime          @db.Timestamptz(3)
+  status        AppointmentStatus @default(CONFIRMED)
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  notes         String?
+  /// Token secreto del enlace que recibe el cliente para cancelar su turno
+  /// sin necesidad de cuenta.
+  cancelToken   String            @unique @default(cuid())
+  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, startsAt])
+}
