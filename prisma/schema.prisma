@@ -122,9 +122,10 @@ model Appointment {
   customerEmail String
   customerPhone String?
   notes         String?
-  /// Token secreto del enlace que recibe el cliente para cancelar su turno
-  /// sin necesidad de cuenta.
-  cancelToken   String            @unique @default(cuid())
+  /// Token secreto del enlace que recibe el cliente para ver y cancelar su
+  /// turno sin necesidad de cuenta. Lo genera la aplicación con un generador
+  /// criptográfico (un cuid es predecible y no sirve como secreto).
+  cancelToken   String            @unique
   createdAt     DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
 

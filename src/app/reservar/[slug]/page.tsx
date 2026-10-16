@@ -1,0 +1,307 @@
+// Página pública de reservas de un negocio.
+//
+// El progreso de la reserva vive en la URL (?servicio=…&fecha=…&hora=…): cada
+// paso es un enlace, así funciona sin JavaScript, el botón "atrás" del
+// navegador deshace el último paso y el enlace se puede compartir. Los
+// parámetros se validan contra los datos reales; uno inválido se ignora.
+
+import type { Metadata } from "next";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { connection } from "next/server";
+import { Suspense, type ReactNode } from "react";
+import { weekdayOf, type Interval } from "@/lib/availability";
+import {
+  dateRange,
+  formatDateLong,
+  formatDayMonth,
+  formatDuration,
+  formatPrice,
+  formatTime,
+  formatWeekdayShort,
+} from "@/lib/dates";
+import { BOOKING_WINDOW_DAYS, bookingWindow, computeSlots } from "@/server/availability";
+import { findPublicBusiness, type PublicBusiness } from "@/server/business";
+import { BookingForm } from "./booking-form";
+
+export const metadata: Metadata = { title: "Reservar turno" };
+
+export default function BookingPage({ params, searchParams }: PageProps<"/reservar/[slug]">) {
+  return (
+    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
+      <Suspense fallback={<BookingSkeleton />}>
+        <Booking params={params} searchParams={searchParams} />
+      </Suspense>
+    </main>
+  );
+}
+
+type SearchParams = Awaited<PageProps<"/reservar/[slug]">["searchParams"]>;
+
+/** Un parámetro de búsqueda repetido (?a=1&a=2) se toma como ausente. */
+const single = (value: string | string[] | undefined) =>
+  typeof value === "string" ? value : undefined;
+
+async function Booking({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<SearchParams>;
+}) {
+  const { slug } = await params;
+  const query = await searchParams;
+  await connection();
+  const now = new Date();
+
+  const business = await findPublicBusiness(slug);
+  if (!business) notFound();
+
+  const service = business.services.find((s) => s.id === single(query.servicio));
+  const days = dateRange(bookingWindow(business.timezone, now).first, BOOKING_WINDOW_DAYS);
+  const date = service ? days.find((d) => d === single(query.fecha)) : undefined;
+
+  const slots =
+    service && date
+      ? await computeSlots(
+          {
+            businessId: business.id,
+            timezone: business.timezone,
+            durationMinutes: service.durationMinutes,
+          },
+          date,
+          now,
+        )
+      : [];
+  const requestedTime = date ? single(query.hora) : undefined;
+  const slot = slots.find((s) => s.start.toISOString() === requestedTime);
+
+  const href = (next: { servicio?: string; fecha?: string; hora?: string }, anchor: string) =>
+    `/reservar/${business.slug}?${new URLSearchParams(next)}#${anchor}`;
+
+  return (
+    <div className="space-y-6">
+      <BusinessHeader business={business} />
+
+      <Step number={1} title="Elegí el servicio" id="servicio">
+        {business.services.length === 0 ? (
+          <p className="text-muted">Este negocio todavía no ofrece servicios online.</p>
+        ) : (
+          <ul className="grid gap-2">
+            {business.services.map((s) => (
+              <li key={s.id}>
+                <Option
+                  href={href({ servicio: s.id }, "dia")}
+                  selected={s.id === service?.id}
+                  className="flex items-center justify-between gap-4 px-4 py-3 text-left"
+                >
+                  <span>
+                    <span className="block font-medium">{s.name}</span>
+                    {s.description && (
+                      <span className="block text-sm text-muted">{s.description}</span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-right text-sm">
+                    <span className="block font-medium">{formatPrice(s.priceCents)}</span>
+                    <span className="block text-muted">{formatDuration(s.durationMinutes)}</span>
+                  </span>
+                </Option>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Step>
+
+      {service && (
+        <Step number={2} title="Elegí el día" id="dia">
+          <ul className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-2">
+            {days.map((d) => {
+              const open = business.openWeekdays.has(weekdayOf(d));
+              const content = (
+                <>
+                  <span className="text-xs uppercase tracking-wide">{formatWeekdayShort(d)}</span>
+                  <span className="text-lg font-semibold leading-tight">{d.slice(8)}</span>
+                  <span className="text-xs">{formatDayMonth(d).split(" ")[1]}</span>
+                </>
+              );
+              return (
+                <li key={d} className="snap-start">
+                  {open ? (
+                    <Option
+                      href={href({ servicio: service.id, fecha: d }, "horario")}
+                      selected={d === date}
+                      className="flex w-16 flex-col items-center py-2"
+                    >
+                      {content}
+                    </Option>
+                  ) : (
+                    <span
+                      className="flex w-16 cursor-not-allowed flex-col items-center rounded-xl border border-dashed border-border py-2 text-muted opacity-60"
+                      title="Cerrado"
+                    >
+                      {content}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Step>
+      )}
+
+      {service && date && (
+        <Step number={3} title={`Elegí el horario · ${formatDateLong(date)}`} id="horario">
+          {requestedTime && !slot && (
+            <Notice tone="danger">Ese horario ya no está disponible. Elegí otro.</Notice>
+          )}
+          {slots.length === 0 ? (
+            <p className="text-muted">No quedan horarios libres este día. Probá con otro.</p>
+          ) : (
+            <SlotGrid
+              slots={slots}
+              timezone={business.timezone}
+              selected={slot}
+              hrefFor={(s) => href({ servicio: service.id, fecha: date, hora: s.start.toISOString() }, "datos")}
+            />
+          )}
+        </Step>
+      )}
+
+      {service && date && slot && (
+        <Step number={4} title="Completá tus datos" id="datos">
+          <dl className="mb-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-xl bg-accent-soft p-4 text-sm">
+            <dt className="text-muted">Servicio</dt>
+            <dd className="font-medium">{service.name}</dd>
+            <dt className="text-muted">Cuándo</dt>
+            <dd className="font-medium first-letter:uppercase">
+              {formatDateLong(date)}, {formatTime(slot.start, business.timezone)} a{" "}
+              {formatTime(slot.end, business.timezone)}
+            </dd>
+            <dt className="text-muted">Precio</dt>
+            <dd className="font-medium">{formatPrice(service.priceCents)}</dd>
+          </dl>
+          <BookingForm
+            businessSlug={business.slug}
+            serviceId={service.id}
+            startsAt={slot.start.toISOString()}
+            backHref={href({ servicio: service.id, fecha: date }, "horario")}
+          />
+        </Step>
+      )}
+    </div>
+  );
+}
+
+function BusinessHeader({ business }: { business: PublicBusiness }) {
+  return (
+    <header>
+      <p className="text-sm font-medium text-accent">Reservá tu turno online</p>
+      <h1 className="mt-1 text-3xl font-semibold tracking-tight">{business.name}</h1>
+      {(business.address || business.phone) && (
+        <p className="mt-2 text-sm text-muted">
+          {[business.address, business.phone].filter(Boolean).join(" · ")}
+        </p>
+      )}
+    </header>
+  );
+}
+
+function Step({
+  number,
+  title,
+  id,
+  children,
+}: {
+  number: number;
+  title: string;
+  id: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+      <h2 className="mb-4 flex items-center gap-3 font-semibold">
+        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm text-accent-foreground">
+          {number}
+        </span>
+        <span className="first-letter:uppercase">{title}</span>
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/** Opción elegible de un paso: un enlace que se resalta cuando está elegido. */
+function Option({
+  href,
+  selected,
+  className = "",
+  children,
+}: {
+  href: string;
+  selected: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={selected ? "true" : undefined}
+      className={`rounded-xl border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
+        selected
+          ? "border-accent bg-accent text-accent-foreground [&_.text-muted]:text-accent-foreground/80"
+          : "border-border hover:border-accent hover:bg-accent-soft"
+      } ${className}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function SlotGrid({
+  slots,
+  timezone,
+  selected,
+  hrefFor,
+}: {
+  slots: Interval[];
+  timezone: string;
+  selected?: Interval;
+  hrefFor: (slot: Interval) => string;
+}) {
+  return (
+    <ul className="grid grid-cols-4 gap-2 sm:grid-cols-6">
+      {slots.map((s) => (
+        <li key={s.start.toISOString()}>
+          <Option
+            href={hrefFor(s)}
+            selected={s.start.getTime() === selected?.start.getTime()}
+            className="block py-2 text-center text-sm font-medium tabular-nums"
+          >
+            {formatTime(s.start, timezone)}
+          </Option>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function Notice({ tone, children }: { tone: "danger"; children: ReactNode }) {
+  const styles = { danger: "bg-danger-soft text-danger" };
+  return (
+    <p role="alert" className={`mb-4 rounded-xl px-4 py-3 text-sm ${styles[tone]}`}>
+      {children}
+    </p>
+  );
+}
+
+function BookingSkeleton() {
+  return (
+    <div className="animate-pulse space-y-6" aria-label="Cargando">
+      <div className="space-y-2">
+        <div className="h-4 w-40 rounded bg-border" />
+        <div className="h-8 w-64 rounded bg-border" />
+      </div>
+      <div className="h-64 rounded-2xl bg-border/60" />
+    </div>
+  );
+}
