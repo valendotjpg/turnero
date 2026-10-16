@@ -3,12 +3,12 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { DEMO_BUSINESS_SLUG, DEMO_OWNER_EMAIL, DEMO_OWNER_PASSWORD } from "../src/lib/demo";
+import { hashPassword } from "../src/lib/password";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
-
-const DEMO_SLUG = "barberia-demo";
 
 /** "09:30" → 570 */
 function toMinutes(hhmm: string) {
@@ -17,12 +17,12 @@ function toMinutes(hhmm: string) {
 }
 
 async function main() {
-  await prisma.business.deleteMany({ where: { slug: DEMO_SLUG } });
+  await prisma.business.deleteMany({ where: { slug: DEMO_BUSINESS_SLUG } });
 
   const business = await prisma.business.create({
     data: {
       name: "Barbería Demo",
-      slug: DEMO_SLUG,
+      slug: DEMO_BUSINESS_SLUG,
       phone: "+54 11 5555-0000",
       address: "Av. Siempreviva 742, CABA",
       services: {
@@ -38,6 +38,13 @@ async function main() {
           },
         ],
       },
+      users: {
+        create: {
+          name: "Julio",
+          email: DEMO_OWNER_EMAIL,
+          passwordHash: await hashPassword(DEMO_OWNER_PASSWORD),
+        },
+      },
       // Martes a viernes con horario cortado, sábado de corrido.
       workingHours: {
         create: [
@@ -52,6 +59,7 @@ async function main() {
   });
 
   console.log(`Negocio de demo creado: ${business.name} (/reservar/${business.slug})`);
+  console.log(`Panel: /panel · ${DEMO_OWNER_EMAIL} / ${DEMO_OWNER_PASSWORD}`);
 }
 
 main()

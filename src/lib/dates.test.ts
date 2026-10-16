@@ -7,8 +7,11 @@ import {
   formatDuration,
   formatPrice,
   formatTime,
+  formatTimeOfDay,
   formatWeekdayShort,
+  isCalendarDate,
   localDateOf,
+  parseTimeOfDay,
 } from "./dates";
 
 const BA = "America/Argentina/Buenos_Aires";
@@ -68,5 +71,30 @@ describe("formateo", () => {
     [90, "1 h 30 min"],
   ])("formatea %i minutos como %s", (minutes, expected) => {
     expect(formatDuration(minutes)).toBe(expected);
+  });
+});
+
+describe("horas del día", () => {
+  it.each([
+    ["00:00", 0],
+    ["09:30", 570],
+    ["23:59", 1439],
+    ["24:00", 1440],
+  ])("parsea %s como %i minutos", (value, minutes) => {
+    expect(parseTimeOfDay(value)).toBe(minutes);
+    expect(formatTimeOfDay(minutes)).toBe(value);
+  });
+
+  it.each(["24:01", "25:00", "9:30", "09:60", "0930", ""])("rechaza %j", (value) => {
+    expect(parseTimeOfDay(value)).toBeNull();
+  });
+});
+
+describe("isCalendarDate", () => {
+  it("acepta fechas reales y rechaza el resto", () => {
+    expect(isCalendarDate("2028-02-29")).toBe(true);
+    expect(isCalendarDate("2026-02-29")).toBe(false);
+    expect(isCalendarDate("2026-13-01")).toBe(false);
+    expect(isCalendarDate("20-10-2026")).toBe(false);
   });
 });

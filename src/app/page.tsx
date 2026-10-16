@@ -34,9 +34,12 @@ export default function Home() {
         >
           Probar la reserva de demo
         </Link>
-        <span className="rounded-xl border border-dashed border-border px-5 py-3 text-muted">
-          Panel del negocio · próximamente
-        </span>
+        <Link
+          href="/panel"
+          className="rounded-xl border border-border bg-card px-5 py-3 font-semibold transition-colors hover:border-accent"
+        >
+          Entrar al panel del negocio
+        </Link>
       </div>
 
       <ul className="mt-14 grid gap-4 sm:grid-cols-3">

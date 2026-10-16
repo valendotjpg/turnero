@@ -7,6 +7,28 @@ import { TZDate } from "@date-fns/tz";
 const LOCALE = "es-AR";
 const DAY_MS = 86_400_000;
 
+/** ¿Es una fecha de calendario YYYY-MM-DD que existe? */
+export function isCalendarDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [year, month, day] = value.split("-").map(Number);
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  return utc.getUTCMonth() === month - 1 && utc.getUTCDate() === day;
+}
+
+/** "09:30" → 570. Admite "24:00" (1440) como fin del día. `null` si no es válida. */
+export function parseTimeOfDay(value: string): number | null {
+  const match = /^([01]\d|2[0-4]):([0-5]\d)$/.exec(value);
+  if (!match) return null;
+  const minutes = Number(match[1]) * 60 + Number(match[2]);
+  return minutes <= 24 * 60 ? minutes : null;
+}
+
+/** 570 → "09:30" */
+export function formatTimeOfDay(minutes: number): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(Math.floor(minutes / 60))}:${pad(minutes % 60)}`;
+}
+
 /** Fecha de calendario de un instante en la zona `timezone`. */
 export function localDateOf(instant: Date, timezone: string): string {
   const local = new TZDate(instant.getTime(), timezone);

@@ -10,11 +10,8 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { localDateOf } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
+import { fieldErrorsOf, optional, type FieldErrors } from "@/lib/validation";
 import { computeSlots, findSlotContext } from "./availability";
-
-/** Convierte "" (campo opcional vacío del formulario) en `undefined`. */
-const optional = <T extends z.ZodType>(schema: T) =>
-  z.preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), schema.optional());
 
 export const bookingInputSchema = z.object({
   serviceId: z.string().min(1),
@@ -43,7 +40,7 @@ export type BookingField = keyof BookingInput;
 
 export type BookingResult =
   | { ok: true; cancelToken: string }
-  | { ok: false; reason: "INVALID_INPUT"; fieldErrors: Partial<Record<BookingField, string>> }
+  | { ok: false; reason: "INVALID_INPUT"; fieldErrors: FieldErrors<BookingField> }
   | { ok: false; reason: "NOT_FOUND" | "SLOT_UNAVAILABLE" };
 
 /** Token de 32 caracteres URL-safe con 192 bits de entropía. */
@@ -75,12 +72,7 @@ export async function bookAppointment(
 ): Promise<BookingResult> {
   const parsed = bookingInputSchema.safeParse(rawInput);
   if (!parsed.success) {
-    const fieldErrors: Partial<Record<BookingField, string>> = {};
-    for (const issue of parsed.error.issues) {
-      const field = issue.path[0] as BookingField;
-      fieldErrors[field] ??= issue.message;
-    }
-    return { ok: false, reason: "INVALID_INPUT", fieldErrors };
+    return { ok: false, reason: "INVALID_INPUT", fieldErrors: fieldErrorsOf(parsed.error) };
   }
   const input = parsed.data;
 

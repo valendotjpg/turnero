@@ -48,9 +48,25 @@ model User {
   passwordHash String
   createdAt    DateTime @default(now()) @db.Timestamptz(3)
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  sessions Session[]
 
   @@index([businessId])
+}
+
+/// Sesión del panel. El navegador guarda un token aleatorio en una cookie
+/// httpOnly; acá sólo se guarda su hash SHA-256, así que una copia de la base
+/// no alcanza para hacerse pasar por nadie.
+model Session {
+  /// SHA-256 (hex) del token de la cookie.
+  id        String   @id
+  userId    String
+  expiresAt DateTime @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Service {

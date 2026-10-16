@@ -66,7 +66,7 @@ function parseLocalDate(date: string) {
 }
 
 /** Instante real que corresponde a `date` + `minute` en la zona `timezone`. */
-function zonedInstant(date: string, minute: number, timezone: string): Date {
+export function zonedInstant(date: string, minute: number, timezone: string): Date {
   const { year, month, day } = parseLocalDate(date);
   const local = new TZDate(year, month - 1, day, Math.floor(minute / 60), minute % 60, timezone);
   return new Date(local.getTime());
