@@ -10,7 +10,7 @@
   <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white" alt="Prisma">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/tests-122%20passing-brightgreen?logo=vitest&logoColor=white" alt="122 tests passing">
+  <img src="https://img.shields.io/badge/tests-159%20passing-brightgreen?logo=vitest&logoColor=white" alt="159 tests passing">
 </p>
 
 > [!NOTE]
@@ -30,6 +30,7 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 - Página de reservas pública por negocio (`/reservar/<negocio>`)
 - Elegir servicio, día y horario entre los que están realmente libres
 - Enlace privado para ver o cancelar el turno, sin necesidad de crear una cuenta
+- Emails de confirmación, de cancelación y recordatorio 24 horas antes, con enlaces para agregar el turno a Google Calendar o a cualquier calendario (`.ics`)
 
 **Para el negocio** — panel en `/panel`
 - Login con sesión
@@ -37,6 +38,7 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 - Servicios con duración y precio; pausar un servicio lo saca de la reserva online sin perder su historial
 - Horarios de atención semanales, incluido horario cortado
 - Bloqueos de agenda (feriados, vacaciones, un rato): avisa si ya había turnos dados en ese período
+- Email por cada turno nuevo o cancelado; si el negocio cancela un turno, el cliente recibe el aviso
 
 ## Decisiones de diseño
 
@@ -55,6 +57,26 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 - **Una sola puerta de entrada.** Toda lectura de la sesión pasa por la [capa de acceso a datos](src/server/dal.ts); cada página y cada Server Action del panel la consulta, porque una Server Action es un endpoint que cualquiera puede invocar con un POST. El [`proxy.ts`](src/proxy.ts) sólo hace un chequeo optimista (¿hay cookie?) para redirigir rápido al login.
 - **Aislamiento entre negocios.** Las [funciones del panel](src/server/panel) reciben el negocio de la sesión, nunca del formulario, y cada escritura filtra por él en el mismo `UPDATE`/`DELETE`: un id de otro negocio se comporta como inexistente. Los tests de integración crean dos negocios y verifican que uno no pueda tocar los datos del otro.
 - **Cambios de estado atómicos.** Las transiciones permitidas de un turno (por ejemplo, "realizado" sólo después de que empezó, y un turno cancelado no se reactiva) se validan en la misma consulta que lo actualiza.
+
+### Emails: outbox transaccional
+
+Los emails no se mandan en el momento de reservar: se **guardan en la tabla `EmailMessage` dentro de la misma transacción** que crea o cancela el turno, y se envían después.
+
+```
+Reserva ──┬─ INSERT Appointment ─┐
+          └─ INSERT EmailMessage ┴─ COMMIT ──▶ after(): enviar ──▶ SMTP
+                                                    │ falla
+                                     /api/cron ◀────┘ reintenta: 1, 2, 4, 8 min…
+```
+
+- **Si el servidor de correo está caído, la reserva igual se confirma** y el email queda pendiente. Si la transacción se revierte (por ejemplo, el horario se ocupó), no queda ningún email de una reserva que no existió.
+- **El envío no demora la respuesta:** se dispara con `after()` de Next.js, apenas se respondió al cliente.
+- **Reintentos con espera exponencial** hasta 5 intentos, guardando el último error. Un [cron](src/app/api/cron/route.ts) protegido con un secreto reintenta los pendientes y encola los recordatorios.
+- **Un email se envía una sola vez** aunque corran varios workers: cada uno "reserva" el email con un `UPDATE` condicionado al estado, que sólo puede ganar uno. Si un worker muere a mitad del envío, el email vuelve a la cola a los 10 minutos.
+- **Recordatorios idempotentes:** cada turno se marca al encolarlo. Sólo se recuerdan los turnos reservados con más de 24 horas de anticipación (quien reservó para mañana acaba de recibir la confirmación).
+- **Las plantillas escapan todo lo que escribe el cliente** (un nombre o una nota con HTML no se interpreta) y aplanan el asunto a una línea para que no se puedan inyectar encabezados.
+
+En desarrollo, [Mailpit](https://mailpit.axllent.org/) atrapa todos los emails y los muestra en http://localhost:8025, sin mandar nada a nadie. En producción alcanza con apuntar `SMTP_URL` a cualquier proveedor SMTP (Resend, SES, Postmark…).
 
 ## Cómo se calculan los horarios libres
 
@@ -92,6 +114,7 @@ Los tests de integración usan una base aparte, `turnero_test`, que se crea sola
 - **Reserva y cancelación** de punta a punta: validación de datos, horarios fuera de la grilla o de la ventana de reserva, superposiciones, reservas simultáneas y la detección del error de la restricción `EXCLUDE`.
 - **Autenticación:** credenciales, vencimiento y revocación de sesiones, y que la base nunca guarde el token.
 - **Panel:** servicios, horarios, bloqueos y agenda, siempre con dos negocios para comprobar que ninguno pueda leer ni modificar los datos del otro.
+- **Emails:** qué se encola en cada caso, reintentos con backoff, varios workers en paralelo sin envíos duplicados, recuperación de envíos colgados y reglas de los recordatorios.
 
 ## Modelo de datos
 
@@ -100,7 +123,8 @@ Business ─┬─< User           administradores del panel
           ├─< Service        nombre, duración, precio
           ├─< WorkingHours   franjas semanales de atención
           ├─< TimeOff        bloqueos puntuales
-          └─< Appointment >── Service
+          ├─< Appointment >── Service
+          └─< EmailMessage   outbox de emails (opcionalmente, de un turno)
 ```
 
 Ver [`prisma/schema.prisma`](prisma/schema.prisma) y las restricciones adicionales en la [migración inicial](prisma/migrations).
@@ -112,11 +136,13 @@ Requisitos: Node.js 22.12+ y Docker.
 ```bash
 npm install
 cp .env.example .env
-npm run db:up        # levanta PostgreSQL en Docker (puerto 5433)
+npm run db:up        # levanta PostgreSQL (puerto 5433) y Mailpit (http://localhost:8025)
 npm run db:migrate   # aplica las migraciones
 npm run db:seed      # carga un negocio de demostración
 npm run dev          # http://localhost:3000
 ```
+
+Para disparar a mano lo que en producción hace el cron (reintentos y recordatorios), con `npm run dev` corriendo: `npm run cron`.
 
 El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barberia-demo` y una cuenta para el panel en `/panel`: `duenio@barberia-demo.test` / `turnero-demo`.
 
@@ -127,7 +153,8 @@ El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barb
 | `npm test` | Tests unitarios (Vitest) |
 | `npm run test:integration` / `npm run test:all` | Tests de integración / todos |
 | `npm run lint` / `npm run typecheck` | Linter y chequeo de tipos |
-| `npm run db:up` | Levanta la base en Docker |
+| `npm run db:up` | Levanta la base y Mailpit en Docker |
+| `npm run cron` | Ejecuta una vez la tarea periódica de emails |
 | `npm run db:migrate` | Crea y aplica migraciones |
 | `npm run db:seed` | Carga datos de demostración |
 | `npm run db:studio` | Explorador visual de la base |
@@ -138,17 +165,19 @@ El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barb
 - [x] **Etapa 2 — Motor de disponibilidad:** cálculo de horarios libres a partir de horarios de atención, bloqueos, turnos existentes y zona horaria. Lógica pura con tests unitarios.
 - [x] **Etapa 3 — Reserva pública:** flujo de reserva paso a paso, validación con Zod, manejo de conflictos de horario y enlace de cancelación.
 - [x] **Etapa 4 — Panel del negocio:** autenticación, agenda, gestión de servicios, horarios y bloqueos.
-- [ ] **Etapa 5 — Notificaciones:** email de confirmación y recordatorio.
+- [x] **Etapa 5 — Notificaciones:** emails de confirmación, cancelación y recordatorio con outbox transaccional.
 - [ ] **Etapa 6 — Publicación:** deploy con demo pública, CI y capturas.
 
 ## Limitaciones conocidas
 
-- **Sin límite de intentos.** Ni la reserva ni el login limitan la cantidad de pedidos: cualquiera puede reservar todos los horarios de un día o probar contraseñas sin freno (el costo de `scrypt` sólo lo hace más lento). Se resolverá con rate limiting al publicar y, cuando lleguen los emails, con confirmación por correo.
+- **Sin límite de intentos.** Ni la reserva ni el login limitan la cantidad de pedidos: cualquiera puede reservar todos los horarios de un día o probar contraseñas sin freno (el costo de `scrypt` sólo lo hace más lento). Se resolverá con rate limiting al publicar.
 - **Un dueño por negocio, creado por el seed.** No hay registro de negocios, recuperación de contraseña ni gestión de usuarios: el alcance de esta versión es un negocio con su panel.
 - **El negocio no puede cargar turnos a mano** (por ejemplo, uno pedido por teléfono): por ahora sólo se reserva desde la página pública.
 - **Cambiar los horarios no revisa los turnos ya dados.** Si un turno queda fuera del nuevo horario, se mantiene y hay que resolverlo desde la agenda; los bloqueos, en cambio, sí avisan cuántos turnos pisan.
 - **Una página inexistente responde 200 con `noindex`** en vez de 404: la búsqueda ocurre después de empezar a transmitir la página (comportamiento documentado de Next.js al llamar a `notFound()` dentro de `<Suspense>`). A cambio, el armazón de la página se muestra al instante.
 - **Las reglas de reserva son fijas** (horarios cada 15 minutos, 1 hora de anticipación, 30 días hacia adelante). Se volverán configurables por negocio desde el panel.
+
+- **Sin baja de emails ni seguimiento de rebotes.** Los emails son transaccionales (de un turno que la persona reservó), pero un proveedor real requiere manejar rebotes y quejas para cuidar la reputación del remitente.
 
 ## Licencia
 

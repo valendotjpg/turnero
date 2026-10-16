@@ -1,8 +1,10 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { formText, type FormState } from "@/lib/validation";
 import { requireUser } from "@/server/dal";
+import { deliverPendingEmails } from "@/server/email/outbox";
 import { updateAppointmentStatus } from "@/server/panel/agenda";
 
 const STATUSES = ["CONFIRMED", "COMPLETED", "NO_SHOW", "CANCELLED"] as const;
@@ -25,6 +27,8 @@ export async function changeAppointmentStatus(
   );
   if (!result.ok) return { error: result.error };
 
+  // Si fue una cancelación, hay un email para el cliente esperando.
+  after(deliverPendingEmails);
   refresh();
   return { ok: true };
 }

@@ -16,13 +16,15 @@
     "test": "vitest run --project unit",
     "test:watch": "vitest",
     "test:integration": "vitest run --project integration",
-    "test:all": "vitest run"
+    "test:all": "vitest run",
+    "cron": "node scripts/cron.mjs"
   },
   "dependencies": {
     "@date-fns/tz": "1.5.0",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "next": "16.4.2",
+    "nodemailer": "10.1.2",
     "pg": "^8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -32,6 +34,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24",
+    "@types/nodemailer": "8.0.2",
     "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",

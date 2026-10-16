@@ -1,7 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { bookAppointment, type BookingField } from "@/server/booking";
+import { deliverPendingEmails } from "@/server/email/outbox";
 
 const CUSTOMER_FIELDS = ["customerName", "customerEmail", "customerPhone", "notes"] as const;
 type CustomerField = (typeof CUSTOMER_FIELDS)[number];
@@ -30,7 +32,12 @@ export async function submitBooking(
     ...values,
   });
 
-  if (result.ok) redirect(`/turno/${result.cancelToken}?reservado=1`);
+  if (result.ok) {
+    // Los emails ya quedaron en la outbox; se envían después de responder,
+    // así el cliente no espera al servidor de correo.
+    after(deliverPendingEmails);
+    redirect(`/turno/${result.cancelToken}?reservado=1`);
+  }
 
   switch (result.reason) {
     case "INVALID_INPUT":

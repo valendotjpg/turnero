@@ -12,6 +12,7 @@ import { localDateOf } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { fieldErrorsOf, optional, type FieldErrors } from "@/lib/validation";
 import { computeSlots, findSlotContext } from "./availability";
+import { enqueueAppointmentEmails } from "./email/outbox";
 
 export const bookingInputSchema = z.object({
   serviceId: z.string().min(1),
@@ -86,18 +87,23 @@ export async function bookAppointment(
 
   const cancelToken = generateCancelToken();
   try {
-    await prisma.appointment.create({
-      data: {
-        businessId: context.businessId,
-        serviceId: input.serviceId,
-        startsAt: slot.start,
-        endsAt: slot.end,
-        customerName: input.customerName,
-        customerEmail: input.customerEmail,
-        customerPhone: input.customerPhone,
-        notes: input.notes,
-        cancelToken,
-      },
+    // El turno y sus emails se guardan juntos: si uno falla, no queda ninguno.
+    await prisma.$transaction(async (tx) => {
+      const appointment = await tx.appointment.create({
+        data: {
+          businessId: context.businessId,
+          serviceId: input.serviceId,
+          startsAt: slot.start,
+          endsAt: slot.end,
+          customerName: input.customerName,
+          customerEmail: input.customerEmail,
+          customerPhone: input.customerPhone,
+          notes: input.notes,
+          cancelToken,
+        },
+        select: { id: true },
+      });
+      await enqueueAppointmentEmails(tx, appointment.id, ["BOOKING_CONFIRMATION", "BOOKING_NOTICE"], now);
     });
   } catch (error) {
     if (isExclusionViolation(error)) return { ok: false, reason: "SLOT_UNAVAILABLE" };
@@ -116,6 +122,7 @@ export async function findAppointmentByToken(token: string) {
   return prisma.appointment.findUnique({
     where: { cancelToken: token },
     select: {
+      id: true,
       startsAt: true,
       endsAt: true,
       status: true,
@@ -138,11 +145,18 @@ export type CancelResult = { ok: true } | { ok: false; reason: "NOT_FOUND" | "NO
 export async function cancelAppointment(token: string, now: Date = new Date()): Promise<CancelResult> {
   if (!TOKEN_PATTERN.test(token)) return { ok: false, reason: "NOT_FOUND" };
 
-  const { count } = await prisma.appointment.updateMany({
-    where: { cancelToken: token, status: "CONFIRMED", startsAt: { gt: now } },
-    data: { status: "CANCELLED" },
+  const cancelled = await prisma.$transaction(async (tx) => {
+    const { count } = await tx.appointment.updateMany({
+      where: { cancelToken: token, status: "CONFIRMED", startsAt: { gt: now } },
+      data: { status: "CANCELLED" },
+    });
+    if (count === 0) return false;
+
+    const { id } = await tx.appointment.findUniqueOrThrow({ where: { cancelToken: token }, select: { id: true } });
+    await enqueueAppointmentEmails(tx, id, ["CANCELLATION_CONFIRMATION", "CANCELLATION_NOTICE"], now);
+    return true;
   });
-  if (count === 1) return { ok: true };
+  if (cancelled) return { ok: true };
 
   const exists = await prisma.appointment.findUnique({
     where: { cancelToken: token },

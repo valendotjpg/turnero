@@ -29,7 +29,7 @@ export function AppointmentActions({
       status: "CANCELLED",
       label: "Cancelar",
       style: button.secondary,
-      confirm: "¿Cancelar este turno? El horario vuelve a quedar libre para reservas.",
+      confirm: "¿Cancelar este turno? Le vamos a avisar al cliente por email y el horario vuelve a quedar libre.",
     });
   }
   if (status === "COMPLETED" || status === "NO_SHOW") {

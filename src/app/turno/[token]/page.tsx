@@ -6,6 +6,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
+import { googleCalendarUrl } from "@/lib/calendar";
 import { formatDateLong, formatDuration, formatPrice, formatTime, localDateOf } from "@/lib/dates";
 import { findAppointmentByToken } from "@/server/booking";
 import { CancelForm } from "./cancel-form";
@@ -61,7 +62,8 @@ async function AppointmentDetails({
         <div role="status" className="rounded-2xl bg-accent px-5 py-4 text-accent-foreground">
           <p className="font-semibold">¡Listo, {appointment.customerName.split(" ")[0]}! Tu turno está reservado.</p>
           <p className="mt-1 text-sm opacity-90">
-            Guardá este enlace: con él podés volver a ver tu turno o cancelarlo.
+            Te mandamos la confirmación a {appointment.customerEmail}. Con el enlace de ese email
+            podés volver a ver tu turno o cancelarlo.
           </p>
         </div>
       )}
@@ -106,9 +108,31 @@ async function AppointmentDetails({
         </dl>
 
         {isUpcoming && (
-          <div className="mt-6 border-t border-border pt-5">
-            <CancelForm token={token} />
-          </div>
+          <>
+            <p className="mt-6 flex flex-wrap gap-x-4 gap-y-1 text-sm">
+              <span className="text-muted">Agregar al calendario:</span>
+              <a
+                href={googleCalendarUrl({
+                  uid: appointment.id,
+                  title: `${service.name} en ${business.name}`,
+                  start: startsAt,
+                  end: endsAt,
+                  location: business.address,
+                })}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-accent hover:underline"
+              >
+                Google
+              </a>
+              <a href={`/turno/${token}/calendario.ics`} className="font-medium text-accent hover:underline">
+                Apple, Outlook y otros (.ics)
+              </a>
+            </p>
+            <div className="mt-5 border-t border-border pt-5">
+              <CancelForm token={token} />
+            </div>
+          </>
         )}
       </article>
 

@@ -6,6 +6,7 @@ import { localDateOf } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import type { AppointmentStatus } from "@/generated/prisma/client";
 import type { MutationResult } from "@/lib/validation";
+import { enqueueAppointmentEmails } from "../email/outbox";
 
 /** Turnos (en cualquier estado) y bloqueos de un día, en orden cronológico. */
 export async function getDayAgenda(businessId: string, timezone: string, date: string) {
@@ -86,17 +87,24 @@ export async function updateAppointmentStatus(
 ): Promise<MutationResult> {
   if (!(status in ALLOWED_FROM)) return { ok: false, error: "Estado inválido." };
 
-  // Negocio, estado de origen y hora en el mismo UPDATE: sin carreras.
-  const { count } = await prisma.appointment.updateMany({
-    where: {
-      id: appointmentId,
-      businessId,
-      status: { in: ALLOWED_FROM[status] },
-      ...(REQUIRES_STARTED.includes(status) && { startsAt: { lte: now } }),
-    },
-    data: { status },
+  const updated = await prisma.$transaction(async (tx) => {
+    // Negocio, estado de origen y hora en el mismo UPDATE: sin carreras.
+    const { count } = await tx.appointment.updateMany({
+      where: {
+        id: appointmentId,
+        businessId,
+        status: { in: ALLOWED_FROM[status] },
+        ...(REQUIRES_STARTED.includes(status) && { startsAt: { lte: now } }),
+      },
+      data: { status },
+    });
+    // Si el negocio cancela, se le avisa al cliente.
+    if (count === 1 && status === "CANCELLED") {
+      await enqueueAppointmentEmails(tx, appointmentId, ["CANCELLED_BY_BUSINESS"], now);
+    }
+    return count === 1;
   });
-  if (count === 1) return { ok: true };
+  if (updated) return { ok: true };
 
   const exists = await prisma.appointment.count({ where: { id: appointmentId, businessId } });
   return {

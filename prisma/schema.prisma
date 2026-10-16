@@ -37,6 +37,7 @@ model Business {
   workingHours WorkingHours[]
   timeOff      TimeOff[]
   appointments Appointment[]
+  emails       EmailMessage[]
 }
 
 /// Persona que administra el negocio desde el panel.
@@ -126,27 +127,83 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-  id            String            @id @default(cuid())
-  businessId    String
-  serviceId     String
-  startsAt      DateTime          @db.Timestamptz(3)
+  id               String            @id @default(cuid())
+  businessId       String
+  serviceId        String
+  startsAt         DateTime          @db.Timestamptz(3)
   /// Se guarda (en vez de calcularse) para que cambiar la duración de un
   /// servicio no altere los turnos ya dados.
-  endsAt        DateTime          @db.Timestamptz(3)
-  status        AppointmentStatus @default(CONFIRMED)
-  customerName  String
-  customerEmail String
-  customerPhone String?
-  notes         String?
+  endsAt           DateTime          @db.Timestamptz(3)
+  status           AppointmentStatus @default(CONFIRMED)
+  customerName     String
+  customerEmail    String
+  customerPhone    String?
+  notes            String?
   /// Token secreto del enlace que recibe el cliente para ver y cancelar su
   /// turno sin necesidad de cuenta. Lo genera la aplicación con un generador
   /// criptográfico (un cuid es predecible y no sirve como secreto).
-  cancelToken   String            @unique
-  createdAt     DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime          @updatedAt @db.Timestamptz(3)
+  cancelToken      String            @unique
+  /// Cuándo se encoló el recordatorio. Evita mandarlo dos veces.
+  reminderQueuedAt DateTime?         @db.Timestamptz(3)
+  createdAt        DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime          @updatedAt @db.Timestamptz(3)
 
-  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  business Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  service  Service        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  emails   EmailMessage[]
 
   @@index([businessId, startsAt])
+}
+
+enum EmailKind {
+  /// Al cliente: su turno quedó reservado.
+  BOOKING_CONFIRMATION
+  /// Al negocio: entró un turno nuevo.
+  BOOKING_NOTICE
+  /// Al cliente: confirmación de que canceló.
+  CANCELLATION_CONFIRMATION
+  /// Al negocio: un cliente canceló.
+  CANCELLATION_NOTICE
+  /// Al cliente: el negocio canceló su turno.
+  CANCELLED_BY_BUSINESS
+  /// Al cliente: su turno es dentro de 24 horas.
+  REMINDER
+}
+
+enum EmailStatus {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+/// Outbox de emails. Cada email se guarda en la misma transacción que el
+/// cambio que lo origina (una reserva, una cancelación) y se envía después:
+/// si el servidor de correo falla, el turno igual queda registrado y el email
+/// se reintenta. El contenido se arma al encolar, así el email refleja los
+/// datos del momento en que ocurrió el hecho.
+model EmailMessage {
+  id            String      @id @default(cuid())
+  businessId    String
+  appointmentId String?
+  kind          EmailKind
+  to            String
+  subject       String
+  html          String
+  text          String
+  status        EmailStatus @default(PENDING)
+  attempts      Int         @default(0)
+  /// No se intenta enviar antes de este momento (backoff entre reintentos).
+  nextAttemptAt DateTime    @default(now()) @db.Timestamptz(3)
+  /// Cuándo un worker lo tomó para enviarlo (status SENDING).
+  lockedAt      DateTime?   @db.Timestamptz(3)
+  lastError     String?
+  sentAt        DateTime?   @db.Timestamptz(3)
+  createdAt     DateTime    @default(now()) @db.Timestamptz(3)
+
+  business    Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([status, nextAttemptAt])
+  @@index([appointmentId])
 }

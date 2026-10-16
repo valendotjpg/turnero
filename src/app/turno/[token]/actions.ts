@@ -1,7 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { cancelAppointment } from "@/server/booking";
+import { deliverPendingEmails } from "@/server/email/outbox";
 
 export interface CancelFormState {
   error?: string;
@@ -23,6 +25,7 @@ export async function submitCancellation(
     };
   }
 
+  after(deliverPendingEmails);
   // Vuelve a renderizar la página para mostrar el turno como cancelado.
   refresh();
   return {};
