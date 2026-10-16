@@ -15,6 +15,17 @@
 </p>
 
 <p align="center">
+  <a href="https://turnero-azure.vercel.app"><strong>▶&nbsp; Ver demo en vivo</strong></a>
+  &nbsp;·&nbsp;
+  <a href="https://turnero-azure.vercel.app/reservar/barberia-demo">Reservar un turno</a>
+  &nbsp;·&nbsp;
+  <a href="https://turnero-azure.vercel.app/panel">Panel del negocio</a>
+</p>
+
+> [!NOTE]
+> Para entrar al panel de la demo: `duenio@barberia-demo.test` / `turnero-demo`. Los datos se reinician todos los días y los emails no se envían: se pueden ver desde el panel (sección *Emails*) y desde la página de cada turno.
+
+<p align="center">
   <img src="docs/screenshots/01-reserva.png" alt="Página de reservas: servicio, día y horarios libres" width="820">
 </p>
 
