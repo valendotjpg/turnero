@@ -41,7 +41,7 @@ async function UserMenu() {
       <Link
         href={`/reservar/${user.business.slug}`}
         target="_blank"
-        className="hidden truncate text-muted underline-offset-4 hover:text-foreground hover:underline sm:block"
+        className="max-w-[9rem] truncate text-muted underline-offset-4 hover:text-foreground hover:underline sm:max-w-xs"
         title="Abre la página que ven tus clientes"
       >
         {user.business.name} ↗

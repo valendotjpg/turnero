@@ -34,7 +34,7 @@ const STATUS = {
   CONFIRMED: { label: "Confirmado", className: "bg-accent-soft text-accent" },
   COMPLETED: { label: "Realizado", className: "bg-border text-foreground" },
   NO_SHOW: { label: "Ausente", className: "bg-danger-soft text-danger" },
-  CANCELLED: { label: "Cancelado", className: "bg-border text-muted line-through" },
+  CANCELLED: { label: "Cancelado", className: "bg-border text-muted" },
 } as const;
 
 async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["searchParams"] }) {
@@ -121,7 +121,18 @@ async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["sea
                   {d.slice(8)}
                 </span>
                 <span className={`text-xs ${selected ? "" : "text-muted"}`}>
-                  {count === 0 ? "—" : `${count} t.`}
+                  {count === 0 ? (
+                    <>
+                      <span aria-hidden>—</span>
+                      <span className="sr-only">sin turnos</span>
+                    </>
+                  ) : (
+                    <>
+                      {count}
+                      {/* En celular no entra la palabra: queda sólo para lectores de pantalla. */}
+                      <span className="sr-only sm:not-sr-only"> {count === 1 ? "turno" : "turnos"}</span>
+                    </>
+                  )}
                 </span>
               </Link>
             </li>
@@ -152,41 +163,45 @@ async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["sea
             const status = STATUS[a.status];
             return (
               <li key={a.id} className={`${card} !p-4 sm:!p-5 ${a.status === "CANCELLED" ? "opacity-60" : ""}`}>
-                <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
-                  <div className="w-24 shrink-0 tabular-nums">
+                <div className="flex items-start gap-x-4 sm:gap-x-5">
+                  <div className="w-14 shrink-0 tabular-nums sm:w-20">
                     <p className="text-lg font-semibold">{formatTime(a.startsAt, timezone)}</p>
                     <p className="text-sm text-muted">a {formatTime(a.endsAt, timezone)}</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{a.customerName}</p>
-                      <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>
-                        {status.label}
-                      </span>
-                    </div>
-                    <p className="text-sm">{a.service.name}</p>
-                    <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted">
-                      <a href={`mailto:${a.customerEmail}`} className="hover:text-foreground hover:underline">
-                        {a.customerEmail}
-                      </a>
-                      {a.customerPhone && (
-                        <a href={`tel:${a.customerPhone.replace(/[^\d+]/g, "")}`} className="hover:text-foreground hover:underline">
-                          {a.customerPhone}
+                  {/* En celular, las acciones van debajo de los datos; en pantallas
+                      anchas, a la derecha. */}
+                  <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                        <p className="font-semibold">{a.customerName}</p>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${status.className}`}>
+                          {status.label}
+                        </span>
+                      </div>
+                      <p className="text-sm">{a.service.name}</p>
+                      <p className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted">
+                        <a href={`mailto:${a.customerEmail}`} className="break-all hover:text-foreground hover:underline">
+                          {a.customerEmail}
                         </a>
-                      )}
-                    </p>
-                    {a.notes && (
-                      <p className="mt-2 rounded-lg bg-background px-3 py-2 text-sm">
-                        <span className="text-muted">Nota: </span>
-                        {a.notes}
+                        {a.customerPhone && (
+                          <a href={`tel:${a.customerPhone.replace(/[^\d+]/g, "")}`} className="hover:text-foreground hover:underline">
+                            {a.customerPhone}
+                          </a>
+                        )}
                       </p>
-                    )}
+                      {a.notes && (
+                        <p className="mt-2 rounded-lg bg-background px-3 py-2 text-sm">
+                          <span className="text-muted">Nota: </span>
+                          {a.notes}
+                        </p>
+                      )}
+                    </div>
+                    <AppointmentActions
+                      appointmentId={a.id}
+                      status={a.status}
+                      started={a.startsAt <= now}
+                    />
                   </div>
-                  <AppointmentActions
-                    appointmentId={a.id}
-                    status={a.status}
-                    started={a.startsAt <= now}
-                  />
                 </div>
               </li>
             );

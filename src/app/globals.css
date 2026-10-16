@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  /* Selectores de fecha y hora, barras de scroll, etc. siguen el tema. */
+  color-scheme: light dark;
   --background: #f6f5f3;
   --foreground: #1c1917;
   --card: #ffffff;
@@ -52,6 +54,9 @@ body {
    quede pegado al borde superior. */
 html {
   scroll-behavior: smooth;
+  /* Reserva el lugar de la barra de scroll: sin esto, el encabezado se corre
+     al pasar de una página corta a una larga. */
+  scrollbar-gutter: stable;
 }
 
 [id] {

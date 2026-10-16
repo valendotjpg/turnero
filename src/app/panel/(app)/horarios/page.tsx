@@ -36,8 +36,6 @@ async function Schedule() {
       {DISPLAY_ORDER.map((weekday) => (
         <li key={weekday}>
           <DayScheduleForm
-            // Al guardar, el servidor devuelve las franjas normalizadas: remontar el formulario.
-            key={JSON.stringify(week[weekday].ranges)}
             weekday={weekday}
             label={WEEKDAYS[weekday]}
             ranges={week[weekday].ranges}

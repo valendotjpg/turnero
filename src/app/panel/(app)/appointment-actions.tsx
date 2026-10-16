@@ -38,7 +38,7 @@ export function AppointmentActions({
   if (options.length === 0) return null;
 
   return (
-    <form action={formAction} className="flex w-full flex-col items-stretch gap-2 sm:w-auto sm:items-end">
+    <form action={formAction} className="flex shrink-0 flex-col gap-2 sm:items-end">
       <input type="hidden" name="appointmentId" value={appointmentId} />
       <div className="flex flex-wrap gap-2">
         {options.map((o) => (
