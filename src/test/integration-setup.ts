@@ -30,7 +30,8 @@ export default async function setup(project: TestProject) {
   }
 
   execSync("npx prisma migrate deploy", {
-    env: { ...process.env, DATABASE_URL: url.toString() },
+    // DIRECT_URL también: prisma.config.ts la prefiere si está definida.
+    env: { ...process.env, DATABASE_URL: url.toString(), DIRECT_URL: url.toString() },
     stdio: "pipe",
   });
 }

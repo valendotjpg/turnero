@@ -207,3 +207,13 @@ model EmailMessage {
   @@index([status, nextAttemptAt])
   @@index([appointmentId])
 }
+
+/// Contador de intentos por ventana de tiempo (login, reservas). Vive en la
+/// base para no sumar un servicio aparte (Redis): alcanza para este volumen y
+/// funciona igual con varias instancias de la app.
+model RateLimit {
+  /// Qué se limita y para quién, p. ej. "login:203.0.113.7".
+  key         String   @id
+  windowStart DateTime @db.Timestamptz(3)
+  count       Int
+}

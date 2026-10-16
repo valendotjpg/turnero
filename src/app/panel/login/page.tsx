@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { card } from "@/components/styles";
-import { DEMO_OWNER_EMAIL, DEMO_OWNER_PASSWORD } from "@/lib/demo";
+import { DEMO_OWNER_EMAIL, DEMO_OWNER_PASSWORD, showDemoCredentials } from "@/lib/demo";
 import { getCurrentUser } from "@/server/dal";
 import { LoginForm } from "./login-form";
 
@@ -30,16 +30,18 @@ export default function LoginPage() {
         <LoginForm />
       </div>
 
-      <aside className="mt-6 rounded-2xl border border-dashed border-border p-4 text-sm">
-        <p className="font-medium">¿Querés probarlo?</p>
-        <p className="mt-1 text-muted">
-          Usá la cuenta de la barbería de demostración:
-          <br />
-          <span className="font-mono text-foreground">{DEMO_OWNER_EMAIL}</span>
-          <br />
-          <span className="font-mono text-foreground">{DEMO_OWNER_PASSWORD}</span>
-        </p>
-      </aside>
+      {showDemoCredentials() && (
+        <aside className="mt-6 rounded-2xl border border-dashed border-border p-4 text-sm">
+          <p className="font-medium">¿Querés probarlo?</p>
+          <p className="mt-1 text-muted">
+            Usá la cuenta de la barbería de demostración:
+            <br />
+            <span className="font-mono text-foreground">{DEMO_OWNER_EMAIL}</span>
+            <br />
+            <span className="font-mono text-foreground">{DEMO_OWNER_PASSWORD}</span>
+          </p>
+        </aside>
+      )}
     </main>
   );
 }

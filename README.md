@@ -10,11 +10,13 @@
   <img src="https://img.shields.io/badge/PostgreSQL-18-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white" alt="Prisma">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
-  <img src="https://img.shields.io/badge/tests-159%20passing-brightgreen?logo=vitest&logoColor=white" alt="159 tests passing">
+  <img src="https://img.shields.io/badge/tests-173%20passing-brightgreen?logo=vitest&logoColor=white" alt="173 tests passing">
+  <a href="../../actions/workflows/ci.yml"><img src="../../actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
-> [!NOTE]
-> Proyecto en desarrollo. Ver el [plan de etapas](#plan-de-etapas).
+<p align="center">
+  <img src="docs/screenshots/01-reserva.png" alt="Página de reservas: servicio, día y horarios libres" width="820">
+</p>
 
 ---
 
@@ -39,6 +41,22 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 - Horarios de atención semanales, incluido horario cortado
 - Bloqueos de agenda (feriados, vacaciones, un rato): avisa si ya había turnos dados en ese período
 - Email por cada turno nuevo o cancelado; si el negocio cancela un turno, el cliente recibe el aviso
+
+## Capturas
+
+| Agenda del negocio | En el celular |
+| --- | --- |
+| <img src="docs/screenshots/03-agenda.png" alt="Agenda del día en el panel" width="560"> | <img src="docs/screenshots/04-agenda-celular.png" alt="Agenda en el celular" width="220"> |
+
+| Turno confirmado | Email de confirmación |
+| --- | --- |
+| <img src="docs/screenshots/02-turno-confirmado.png" alt="Página del turno recién reservado" width="220"> | <img src="docs/screenshots/06-email.png" alt="Email de confirmación visto desde el panel" width="560"> |
+
+<p align="center">
+  <img src="docs/screenshots/05-horarios.png" alt="Horarios de atención con horario cortado" width="720">
+</p>
+
+Las capturas las genera [`npm run screenshots`](scripts/screenshots.mjs), que recorre la app con un navegador real: reserva un turno, entra al panel y abre el email. Sirve también como prueba de humo de punta a punta.
 
 ## Decisiones de diseño
 
@@ -78,6 +96,15 @@ Reserva ──┬─ INSERT Appointment ─┐
 
 En desarrollo, [Mailpit](https://mailpit.axllent.org/) atrapa todos los emails y los muestra en http://localhost:8025, sin mandar nada a nadie. En producción alcanza con apuntar `SMTP_URL` a cualquier proveedor SMTP (Resend, SES, Postmark…).
 
+### Una demo pública sin riesgos
+
+La cuenta del panel de la demo es pública y cualquiera puede reservar con cualquier email, así que la instancia publicada corre con `DEMO_MODE=true`:
+
+- **Los emails no salen de la app.** Mandarlos convertiría la demo en un relay de spam: alcanzaría con reservar usando el email de otra persona. Se generan igual que en producción y se pueden ver desde el panel (sección *Emails*) y desde la página de cada turno.
+- **Límite de intentos por IP** en el login y en las reservas, guardado en Postgres con un único `INSERT … ON CONFLICT` atómico, sin sumar Redis.
+- **Los datos se reinician todos los días** con turnos de muestra alrededor de la fecha actual, generados para que nunca se superpongan ni caigan fuera del horario o dentro de un bloqueo (hay un test que lo verifica para cada día de la semana).
+- Headers de seguridad básicos (`X-Frame-Options`, `nosniff`, `Referrer-Policy`), para que, por ejemplo, el enlace secreto de un turno no se filtre en el `Referer`.
+
 ## Cómo se calculan los horarios libres
 
 El [motor de disponibilidad](src/lib/availability.ts) es lógica pura: recibe los horarios de atención, los intervalos ocupados (turnos activos y bloqueos), la duración del servicio y la hora actual, y devuelve los horarios en los que se puede reservar. Al no tocar la base ni el reloj del sistema, se testea de forma determinística ([tests](src/lib/availability.test.ts)).
@@ -115,6 +142,9 @@ Los tests de integración usan una base aparte, `turnero_test`, que se crea sola
 - **Autenticación:** credenciales, vencimiento y revocación de sesiones, y que la base nunca guarde el token.
 - **Panel:** servicios, horarios, bloqueos y agenda, siempre con dos negocios para comprobar que ninguno pueda leer ni modificar los datos del otro.
 - **Emails:** qué se encola en cada caso, reintentos con backoff, varios workers en paralelo sin envíos duplicados, recuperación de envíos colgados y reglas de los recordatorios.
+- **Demo y rate limiting:** los datos de muestra son válidos cualquiera sea el día en que se generan, y el límite de intentos deja pasar exactamente lo permitido aun con pedidos simultáneos.
+
+El [CI](.github/workflows/ci.yml) corre lint, tipos, todos los tests (con un PostgreSQL real como servicio) y el build en cada push.
 
 ## Modelo de datos
 
@@ -155,9 +185,30 @@ El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barb
 | `npm run lint` / `npm run typecheck` | Linter y chequeo de tipos |
 | `npm run db:up` | Levanta la base y Mailpit en Docker |
 | `npm run cron` | Ejecuta una vez la tarea periódica de emails |
+| `npm run screenshots` | Regenera las capturas del README (con la app corriendo) |
 | `npm run db:migrate` | Crea y aplica migraciones |
 | `npm run db:seed` | Carga datos de demostración |
 | `npm run db:studio` | Explorador visual de la base |
+
+## Publicar una instancia propia
+
+Pensado para [Vercel](https://vercel.com) + [Neon](https://neon.tech) (Postgres), ambos con plan gratuito.
+
+1. **Base de datos:** crear un proyecto en Neon y copiar las dos cadenas de conexión: la *pooled* (para la app) y la directa (para las migraciones).
+2. **App:** importar el repositorio en Vercel y cargar las variables de entorno:
+
+   | Variable | Valor |
+   | --- | --- |
+   | `DATABASE_URL` | cadena *pooled* de Neon |
+   | `DIRECT_URL` | cadena directa de Neon |
+   | `APP_URL` | la URL pública, p. ej. `https://turnero.vercel.app` |
+   | `CRON_SECRET` | un valor aleatorio largo (`openssl rand -base64 32`) |
+   | `DEMO_MODE` | `true` para una demo pública; si no, `false` |
+   | `SMTP_URL` / `EMAIL_FROM` | sólo si se envían emails de verdad (p. ej. `smtps://resend:<api-key>@smtp.resend.com:465`) |
+
+   El build (`vercel-build`) aplica las migraciones antes de compilar.
+3. **Tareas programadas:** en el repositorio de GitHub, cargar la variable `APP_URL` y el secreto `CRON_SECRET` (*Settings → Secrets and variables → Actions*). El workflow [`tareas.yml`](.github/workflows/tareas.yml) llama a `/api/cron` cada 10 minutos y, en modo demo, reinicia los datos todos los días. Se usa GitHub Actions porque el plan gratuito de Vercel sólo admite crons diarios.
+4. **Datos de demo:** correr una vez *Actions → Tareas programadas → Run workflow → reiniciar-demo*.
 
 ## Plan de etapas
 
@@ -166,11 +217,11 @@ El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barb
 - [x] **Etapa 3 — Reserva pública:** flujo de reserva paso a paso, validación con Zod, manejo de conflictos de horario y enlace de cancelación.
 - [x] **Etapa 4 — Panel del negocio:** autenticación, agenda, gestión de servicios, horarios y bloqueos.
 - [x] **Etapa 5 — Notificaciones:** emails de confirmación, cancelación y recordatorio con outbox transaccional.
-- [ ] **Etapa 6 — Publicación:** deploy con demo pública, CI y capturas.
+- [x] **Etapa 6 — Publicación:** CI, modo demo seguro, capturas automáticas y configuración de deploy.
 
 ## Limitaciones conocidas
 
-- **Sin límite de intentos.** Ni la reserva ni el login limitan la cantidad de pedidos: cualquiera puede reservar todos los horarios de un día o probar contraseñas sin freno (el costo de `scrypt` sólo lo hace más lento). Se resolverá con rate limiting al publicar.
+- **El límite de intentos es por IP.** Frena el abuso casual y la prueba masiva de contraseñas, pero no a alguien con muchas IPs. Un negocio real sumaría un CAPTCHA en la reserva o verificación del email.
 - **Un dueño por negocio, creado por el seed.** No hay registro de negocios, recuperación de contraseña ni gestión de usuarios: el alcance de esta versión es un negocio con su panel.
 - **El negocio no puede cargar turnos a mano** (por ejemplo, uno pedido por teléfono): por ahora sólo se reserva desde la página pública.
 - **Cambiar los horarios no revisa los turnos ya dados.** Si un turno queda fuera del nuevo horario, se mantiene y hay que resolverlo desde la agenda; los bloqueos, en cambio, sí avisan cuántos turnos pisan.

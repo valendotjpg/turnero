@@ -4,6 +4,7 @@
 
 import "server-only";
 import nodemailer from "nodemailer";
+import { isDemoMode } from "@/lib/demo";
 
 export interface OutgoingEmail {
   to: string;
@@ -21,6 +22,14 @@ let defaultMailer: Mailer | undefined;
 
 export function getMailer(): Mailer {
   if (defaultMailer) return defaultMailer;
+
+  // En la demo pública cualquiera puede escribir cualquier email: mandarlos
+  // de verdad la convertiría en un relay de spam. Se "envían" sin salir de la
+  // app y se pueden ver desde el panel y desde la página del turno.
+  if (isDemoMode()) {
+    defaultMailer = { async send() {} };
+    return defaultMailer;
+  }
 
   const from = process.env.EMAIL_FROM ?? "Turnero <turnos@turnero.test>";
   const smtpUrl = process.env.SMTP_URL;

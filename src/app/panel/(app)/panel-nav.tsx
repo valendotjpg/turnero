@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/panel/servicios", label: "Servicios" },
   { href: "/panel/horarios", label: "Horarios" },
   { href: "/panel/bloqueos", label: "Bloqueos" },
+  { href: "/panel/emails", label: "Emails" },
 ] as const;
 
 export function PanelNav() {

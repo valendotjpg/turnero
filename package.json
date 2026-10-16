@@ -17,7 +17,9 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --project integration",
     "test:all": "vitest run",
-    "cron": "node scripts/cron.mjs"
+    "cron": "node scripts/cron.mjs",
+    "vercel-build": "prisma migrate deploy && next build",
+    "screenshots": "node scripts/screenshots.mjs"
   },
   "dependencies": {
     "@date-fns/tz": "1.5.0",
@@ -41,6 +43,7 @@
     "dotenv": "^18.0.8",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "playwright-core": "1.64.1",
     "prisma": "7.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",

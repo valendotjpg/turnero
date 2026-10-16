@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 import { bookAppointment, type BookingField } from "@/server/booking";
 import { deliverPendingEmails } from "@/server/email/outbox";
+import { consumeRateLimit, formatRetryAfter, RULES } from "@/server/rate-limit";
+import { clientIp } from "@/server/request";
 
 const CUSTOMER_FIELDS = ["customerName", "customerEmail", "customerPhone", "notes"] as const;
 type CustomerField = (typeof CUSTOMER_FIELDS)[number];
@@ -25,6 +27,14 @@ export async function submitBooking(
   formData: FormData,
 ): Promise<BookingFormState> {
   const values = Object.fromEntries(CUSTOMER_FIELDS.map((f) => [f, text(formData, f)]));
+
+  const limit = await consumeRateLimit(`booking:${await clientIp()}`, RULES.booking);
+  if (!limit.allowed) {
+    return {
+      values,
+      error: `Hiciste demasiadas reservas seguidas. Probá de nuevo en ${formatRetryAfter(limit.retryAfterMs)}.`,
+    };
+  }
 
   const result = await bookAppointment(text(formData, "businessSlug"), {
     serviceId: text(formData, "serviceId"),

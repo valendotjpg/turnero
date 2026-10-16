@@ -7,6 +7,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { googleCalendarUrl } from "@/lib/calendar";
+import { isDemoMode } from "@/lib/demo";
 import { formatDateLong, formatDuration, formatPrice, formatTime, localDateOf } from "@/lib/dates";
 import { findAppointmentByToken } from "@/server/booking";
 import { CancelForm } from "./cancel-form";
@@ -66,6 +67,16 @@ async function AppointmentDetails({
             podés volver a ver tu turno o cancelarlo.
           </p>
         </div>
+      )}
+
+      {isDemoMode() && (
+        <p className="rounded-2xl border border-dashed border-border px-5 py-4 text-sm">
+          <span className="font-medium">Esto es una demo:</span>{" "}
+          <span className="text-muted">los emails no se envían de verdad.</span>{" "}
+          <Link href={`/turno/${token}/emails`} className="font-medium text-accent hover:underline">
+            Ver los emails que te habrían llegado →
+          </Link>
+        </p>
       )}
 
       <article className="rounded-2xl border border-border bg-card p-6 shadow-sm">
