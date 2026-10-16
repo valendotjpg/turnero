@@ -194,19 +194,19 @@ El seed crea la **Barbería Demo** con su página de reservas en `/reservar/barb
 
 Pensado para [Vercel](https://vercel.com) + [Neon](https://neon.tech) (Postgres), ambos con plan gratuito.
 
-1. **Base de datos:** crear un proyecto en Neon y copiar las dos cadenas de conexión: la *pooled* (para la app) y la directa (para las migraciones).
+1. **Base de datos:** crear un proyecto en Neon. Sus dos cadenas de conexión se usan así: la *pooled* (host con `-pooler`) para la app y la directa para las migraciones, que por el pooler fallan. Con el CLI de Neon (`neon init` + `neon env pull`) llegan como `DATABASE_URL` y `DATABASE_URL_UNPOOLED`; la integración de Neon con Vercel las carga sola con esos mismos nombres.
 2. **App:** importar el repositorio en Vercel y cargar las variables de entorno:
 
    | Variable | Valor |
    | --- | --- |
    | `DATABASE_URL` | cadena *pooled* de Neon |
-   | `DIRECT_URL` | cadena directa de Neon |
+   | `DATABASE_URL_UNPOOLED` | cadena directa de Neon (también se acepta como `DIRECT_URL`) |
    | `APP_URL` | la URL pública, p. ej. `https://turnero.vercel.app` |
    | `CRON_SECRET` | un valor aleatorio largo (`openssl rand -base64 32`) |
    | `DEMO_MODE` | `true` para una demo pública; si no, `false` |
    | `SMTP_URL` / `EMAIL_FROM` | sólo si se envían emails de verdad (p. ej. `smtps://resend:<api-key>@smtp.resend.com:465`) |
 
-   El build (`vercel-build`) aplica las migraciones antes de compilar.
+   El build (`vercel-build`) aplica las migraciones antes de compilar. En Vercel, el pool de conexiones se registra con `attachDatabasePool` para que las conexiones ociosas se cierren bien cuando la función se suspende.
 3. **Tareas programadas:** en el repositorio de GitHub, cargar la variable `APP_URL` y el secreto `CRON_SECRET` (*Settings → Secrets and variables → Actions*). El workflow [`tareas.yml`](.github/workflows/tareas.yml) llama a `/api/cron` cada 10 minutos y, en modo demo, reinicia los datos todos los días. Se usa GitHub Actions porque el plan gratuito de Vercel sólo admite crons diarios.
 4. **Datos de demo:** correr una vez *Actions → Tareas programadas → Run workflow → reiniciar-demo*.
 

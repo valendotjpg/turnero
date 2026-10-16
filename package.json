@@ -23,8 +23,11 @@
   },
   "dependencies": {
     "@date-fns/tz": "1.5.0",
+    "@neon/config": "^1.9.2",
+    "@neon/env": "^1.6.3",
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
+    "@vercel/functions": "3.10.1",
     "next": "16.4.2",
     "nodemailer": "10.1.2",
     "pg": "^8.23.1",

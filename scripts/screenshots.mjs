@@ -13,7 +13,7 @@ import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright-core";
 
 const BASE_URL = (process.env.BASE_URL ?? "http://localhost:3000").replace(/\/+$/, "");
-const OUT = "docs/screenshots";
+const OUT = process.env.SCREENSHOTS_DIR ?? "docs/screenshots";
 const DESKTOP = { width: 1280, height: 860 };
 const MOBILE = { width: 390, height: 844 };
 
