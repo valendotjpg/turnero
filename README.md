@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/Prisma-7-2D3748?logo=prisma&logoColor=white" alt="Prisma">
   <img src="https://img.shields.io/badge/Tailwind-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS">
   <img src="https://img.shields.io/badge/tests-173%20passing-brightgreen?logo=vitest&logoColor=white" alt="173 tests passing">
-  <a href="../../actions/workflows/ci.yml"><img src="../../actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/valendotjpg/turnero/actions/workflows/ci.yml"><img src="https://github.com/valendotjpg/turnero/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
 </p>
 
 <p align="center">
