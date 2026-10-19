@@ -14,10 +14,10 @@ export default function ServicesPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Servicios</h1>
-        <p className="mt-1 text-muted">Lo que tus clientes pueden reservar online, con su duración y precio.</p>
+        <h1 className="display-type text-5xl text-accent sm:text-6xl">Servicios</h1>
+        <p className="mt-4 text-muted">Lo que tus clientes pueden reservar online, con su duración y precio.</p>
       </header>
-      <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-border/60" />}>
+      <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-card" />}>
         <Services />
       </Suspense>
     </div>
@@ -32,7 +32,7 @@ async function Services() {
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem] lg:items-start">
       <ul className="space-y-3">
         {services.length === 0 && (
-          <li className="rounded-2xl border border-dashed border-border px-6 py-10 text-center text-muted">
+          <li className="rounded-xl border border-dashed border-line px-6 py-10 text-center text-muted">
             Todavía no cargaste servicios.
           </li>
         )}
@@ -43,7 +43,7 @@ async function Services() {
                 <p className="font-semibold">
                   {s.name}
                   {!s.active && (
-                    <span className="ml-2 rounded-full bg-border px-2 py-0.5 text-xs font-semibold text-muted">
+                    <span className="ml-2 rounded-[15px] bg-background px-2 py-0.5 text-xs font-semibold text-muted">
                       Pausado
                     </span>
                   )}

@@ -22,17 +22,22 @@ import {
 } from "@/lib/dates";
 import { BOOKING_WINDOW_DAYS, bookingWindow, computeSlots } from "@/server/availability";
 import { findPublicBusiness, type PublicBusiness } from "@/server/business";
+import { SiteHeader } from "@/components/site-header";
+import { pill } from "@/components/styles";
 import { BookingForm } from "./booking-form";
 
 export const metadata: Metadata = { title: "Reservar turno" };
 
 export default function BookingPage({ params, searchParams }: PageProps<"/reservar/[slug]">) {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
-      <Suspense fallback={<BookingSkeleton />}>
-        <Booking params={params} searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <>
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-2xl px-4 py-10 sm:py-14">
+        <Suspense fallback={<BookingSkeleton />}>
+          <Booking params={params} searchParams={searchParams} />
+        </Suspense>
+      </main>
+    </>
   );
 }
 
@@ -83,7 +88,7 @@ async function Booking({
     <div className="space-y-6">
       <BusinessHeader business={business} />
 
-      <Step number={1} title="Elegí el servicio" id="servicio">
+      <Step number={1} title="El servicio" id="servicio">
         {business.services.length === 0 ? (
           <p className="text-muted">Este negocio todavía no ofrece servicios online.</p>
         ) : (
@@ -113,7 +118,7 @@ async function Booking({
       </Step>
 
       {service && (
-        <Step number={2} title="Elegí el día" id="dia">
+        <Step number={2} title="El día" id="dia">
           <ul className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-2">
             {days.map((d) => {
               const open = business.openWeekdays.has(weekdayOf(d));
@@ -136,7 +141,7 @@ async function Booking({
                     </Option>
                   ) : (
                     <span
-                      className="flex w-16 cursor-not-allowed flex-col items-center rounded-xl border border-dashed border-border py-2 text-muted opacity-60"
+                      className="flex w-16 cursor-not-allowed flex-col items-center rounded-[15px] border border-dashed border-line/60 py-2 text-muted opacity-50"
                       title="Cerrado"
                     >
                       {content}
@@ -150,7 +155,7 @@ async function Booking({
       )}
 
       {service && date && (
-        <Step number={3} title={`Elegí el horario · ${formatDateLong(date)}`} id="horario">
+        <Step number={3} title="El horario" subtitle={formatDateLong(date)} id="horario">
           {requestedTime && !slot && (
             <Notice tone="danger">Ese horario ya no está disponible. Elegí otro.</Notice>
           )}
@@ -168,8 +173,8 @@ async function Booking({
       )}
 
       {service && date && slot && (
-        <Step number={4} title="Completá tus datos" id="datos">
-          <dl className="mb-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-xl bg-accent-soft p-4 text-sm">
+        <Step number={4} title="Tus datos" id="datos">
+          <dl className="mb-5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-xl border border-accent/40 bg-accent-soft p-4 text-sm">
             <dt className="text-muted">Servicio</dt>
             <dd className="font-medium">{service.name}</dd>
             <dt className="text-muted">Cuándo</dt>
@@ -194,12 +199,17 @@ async function Booking({
 
 function BusinessHeader({ business }: { business: PublicBusiness }) {
   return (
-    <header>
-      <p className="text-sm font-medium text-accent">Reservá tu turno online</p>
-      <h1 className="mt-1 text-3xl font-semibold tracking-tight">{business.name}</h1>
+    <header className="pb-2">
+      <p className="eyebrow text-accent">◂ Reservá tu turno online ▸</p>
+      <h1 className="display-type mt-4 text-[clamp(3rem,11vw,6.5rem)] text-accent">{business.name}</h1>
       {(business.address || business.phone) && (
-        <p className="mt-2 text-sm text-muted">
-          {[business.address, business.phone].filter(Boolean).join(" · ")}
+        <p className="mt-4 flex flex-wrap gap-x-3 text-muted">
+          {/* Cada dato entero en una línea: un teléfono partido al medio no se lee. */}
+          {[business.address, business.phone].filter(Boolean).map((item) => (
+            <span key={item} className="whitespace-nowrap">
+              {item}
+            </span>
+          ))}
         </p>
       )}
     </header>
@@ -209,22 +219,23 @@ function BusinessHeader({ business }: { business: PublicBusiness }) {
 function Step({
   number,
   title,
+  subtitle,
   id,
   children,
 }: {
   number: number;
   title: string;
+  subtitle?: string;
   id: string;
   children: ReactNode;
 }) {
   return (
-    <section id={id} className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-      <h2 className="mb-4 flex items-center gap-3 font-semibold">
-        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-accent text-sm text-accent-foreground">
-          {number}
-        </span>
-        <span className="first-letter:uppercase">{title}</span>
-      </h2>
+    <section id={id} className="rounded-xl border border-border bg-card p-5 sm:p-6">
+      <header className="mb-5">
+        <p className="eyebrow text-accent">Paso {number} de 4</p>
+        <h2 className="display-type mt-2 text-4xl text-foreground">{title}</h2>
+        {subtitle && <p className="mt-2 text-soft first-letter:uppercase">{subtitle}</p>}
+      </header>
       {children}
     </section>
   );
@@ -246,11 +257,7 @@ function Option({
     <Link
       href={href}
       aria-current={selected ? "true" : undefined}
-      className={`rounded-xl border transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-        selected
-          ? "border-accent bg-accent text-accent-foreground [&_.text-muted]:text-accent-foreground/80"
-          : "border-border hover:border-accent hover:bg-accent-soft"
-      } ${className}`}
+      className={`${pill(selected)} ${selected ? "[&_.text-muted]:text-accent-foreground/80" : ""} ${className}`}
     >
       {children}
     </Link>
@@ -297,11 +304,11 @@ function Notice({ tone, children }: { tone: "danger"; children: ReactNode }) {
 function BookingSkeleton() {
   return (
     <div className="animate-pulse space-y-6" aria-label="Cargando">
-      <div className="space-y-2">
-        <div className="h-4 w-40 rounded bg-border" />
-        <div className="h-8 w-64 rounded bg-border" />
+      <div className="space-y-3">
+        <div className="h-4 w-48 rounded bg-card" />
+        <div className="h-20 w-72 rounded bg-card" />
       </div>
-      <div className="h-64 rounded-2xl bg-border/60" />
+      <div className="h-64 rounded-xl bg-card" />
     </div>
   );
 }

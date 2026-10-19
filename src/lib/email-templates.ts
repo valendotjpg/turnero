@@ -65,7 +65,13 @@ interface Layout {
 }
 
 // Estilos en línea: muchos clientes de correo ignoran <style>.
-const COLORS = { accent: "#0f766e", text: "#1c1917", muted: "#6b6560", border: "#e4e1dd", bg: "#f6f5f3" };
+// Paleta "cuero y cobre" adaptada a fondo claro (muchos clientes de correo
+// manejan mal los fondos oscuros). El cobre es más oscuro que el de la web para
+// que el texto blanco del botón llegue a 4,9:1.
+// Condensada para títulos: Impact viene en casi todos los sistemas; un email no
+// puede depender de fuentes web.
+const DISPLAY_FONT = "Impact,'Anton','Arial Narrow Bold','Arial Narrow',sans-serif";
+const COLORS = { accent: "#b8521a", text: "#1a120c", muted: "#6b5240", border: "#eadfd3", bg: "#f5efe8" };
 
 function render(layout: Layout): RenderedEmail {
   // El asunto lleva datos del cliente: un salto de línea ahí podría colar
@@ -80,8 +86,8 @@ function render(layout: Layout): RenderedEmail {
 <span style="display:none;max-height:0;overflow:hidden;">${escapeHtml(layout.preheader)}</span>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid ${COLORS.border};border-radius:16px;">
 <tr><td style="padding:28px 28px 8px;">
-<p style="margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:${COLORS.accent};">Turnero</p>
-<h1 style="margin:0 0 16px;font-size:22px;line-height:1.3;">${escapeHtml(layout.heading)}</h1>
+<p style="margin:0 0 10px;font-family:${DISPLAY_FONT};font-size:20px;letter-spacing:.02em;text-transform:uppercase;color:${COLORS.accent};">Turnero</p>
+<h1 style="margin:0 0 16px;font-family:${DISPLAY_FONT};font-weight:400;font-size:30px;line-height:1.05;letter-spacing:.02em;text-transform:uppercase;color:${COLORS.accent};">${escapeHtml(layout.heading)}</h1>
 ${layout.paragraphs.map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.55;">${escapeHtml(p)}</p>`).join("\n")}
 </td></tr>
 <tr><td style="padding:8px 28px;">

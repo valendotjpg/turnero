@@ -10,6 +10,7 @@ import { googleCalendarUrl } from "@/lib/calendar";
 import { isDemoMode } from "@/lib/demo";
 import { formatDateLong, formatDuration, formatPrice, formatTime, localDateOf } from "@/lib/dates";
 import { findAppointmentByToken } from "@/server/booking";
+import { SiteHeader } from "@/components/site-header";
 import { CancelForm } from "./cancel-form";
 
 export const metadata: Metadata = {
@@ -20,20 +21,23 @@ export const metadata: Metadata = {
 
 export default function AppointmentPage({ params, searchParams }: PageProps<"/turno/[token]">) {
   return (
-    <main className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-border/60" />}>
-        <AppointmentDetails params={params} searchParams={searchParams} />
-      </Suspense>
-    </main>
+    <>
+      <SiteHeader />
+      <main className="mx-auto w-full max-w-lg px-4 py-10 sm:py-14">
+        <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-card" />}>
+          <AppointmentDetails params={params} searchParams={searchParams} />
+        </Suspense>
+      </main>
+    </>
   );
 }
 
 const STATUS = {
   upcoming: { label: "Confirmado", className: "bg-accent-soft text-accent" },
-  past: { label: "Finalizado", className: "bg-border text-muted" },
+  past: { label: "Finalizado", className: "bg-background text-muted" },
   CANCELLED: { label: "Cancelado", className: "bg-danger-soft text-danger" },
-  COMPLETED: { label: "Realizado", className: "bg-border text-muted" },
-  NO_SHOW: { label: "Ausente", className: "bg-border text-muted" },
+  COMPLETED: { label: "Realizado", className: "bg-background text-muted" },
+  NO_SHOW: { label: "Ausente", className: "bg-background text-muted" },
 } as const;
 
 async function AppointmentDetails({
@@ -60,17 +64,20 @@ async function AppointmentDetails({
   return (
     <div className="space-y-6">
       {justBooked && (
-        <div role="status" className="rounded-2xl bg-accent px-5 py-4 text-accent-foreground">
-          <p className="font-semibold">¡Listo, {appointment.customerName.split(" ")[0]}! Tu turno está reservado.</p>
-          <p className="mt-1 text-sm opacity-90">
-            Te mandamos la confirmación a {appointment.customerEmail}. Con el enlace de ese email
-            podés volver a ver tu turno o cancelarlo.
+        <div role="status" className="text-center">
+          <p className="eyebrow text-accent">◂ Turno reservado ▸</p>
+          <p className="display-type mt-3 text-[clamp(3.5rem,16vw,6rem)] text-accent">
+            ¡Listo, {appointment.customerName.split(" ")[0]}!
+          </p>
+          <p className="mx-auto mt-4 max-w-sm text-muted">
+            Te mandamos la confirmación a <span className="text-soft">{appointment.customerEmail}</span>.
+            Con el enlace de ese email podés volver a ver tu turno o cancelarlo.
           </p>
         </div>
       )}
 
       {isDemoMode() && (
-        <p className="rounded-2xl border border-dashed border-border px-5 py-4 text-sm">
+        <p className="rounded-xl border border-dashed border-line px-5 py-4 text-sm">
           <span className="font-medium">Esto es una demo:</span>{" "}
           <span className="text-muted">los emails no se envían de verdad.</span>{" "}
           <Link href={`/turno/${token}/emails`} className="font-medium text-accent hover:underline">
@@ -79,13 +86,13 @@ async function AppointmentDetails({
         </p>
       )}
 
-      <article className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+      <article className="rounded-xl border border-border bg-card p-6">
         <header className="flex items-start justify-between gap-4">
           <div>
             <p className="text-sm text-muted">{business.name}</p>
-            <h1 className="mt-0.5 text-2xl font-semibold tracking-tight">{service.name}</h1>
+            <h1 className="display-type mt-2 text-4xl text-foreground">{service.name}</h1>
           </div>
-          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${status.className}`}>
+          <span className={`eyebrow shrink-0 rounded-[15px] px-3 py-1 !text-[0.6875rem] ${status.className}`}>
             {status.label}
           </span>
         </header>

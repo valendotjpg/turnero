@@ -24,10 +24,10 @@ export function PanelNav() {
               <Link
                 href={href}
                 aria-current={active ? "page" : undefined}
-                className={`block border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                className={`eyebrow block border-b-2 px-3 py-3 transition-colors ${
                   active
                     ? "border-accent text-foreground"
-                    : "border-transparent text-muted hover:text-foreground"
+                    : "border-transparent text-soft/75 hover:text-soft"
                 }`}
               >
                 {label}

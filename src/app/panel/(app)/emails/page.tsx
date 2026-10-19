@@ -14,8 +14,8 @@ export default function EmailsPage({ searchParams }: PageProps<"/panel/emails">)
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Emails</h1>
-        <p className="mt-1 max-w-2xl text-muted">
+        <h1 className="display-type text-5xl text-accent sm:text-6xl">Emails</h1>
+        <p className="mt-4 max-w-2xl text-muted">
           Los avisos que mandó Turnero a tus clientes y a vos. Si un envío falla, se reintenta solo
           durante un rato.
         </p>
@@ -25,7 +25,7 @@ export default function EmailsPage({ searchParams }: PageProps<"/panel/emails">)
           En la demo los emails no se envían a nadie: quedan acá para que veas cómo son.
         </p>
       )}
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-border/60" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-card" />}>
         <Emails searchParams={searchParams} />
       </Suspense>
     </div>
@@ -33,8 +33,8 @@ export default function EmailsPage({ searchParams }: PageProps<"/panel/emails">)
 }
 
 const STATUS = {
-  PENDING: { label: "Pendiente", className: "bg-border text-muted" },
-  SENDING: { label: "Enviando", className: "bg-border text-muted" },
+  PENDING: { label: "Pendiente", className: "bg-background text-muted" },
+  SENDING: { label: "Enviando", className: "bg-background text-muted" },
   SENT: { label: "Enviado", className: "bg-accent-soft text-accent" },
   FAILED: { label: "Falló", className: "bg-danger-soft text-danger" },
 } as const;
@@ -51,7 +51,7 @@ async function Emails({ searchParams }: { searchParams: PageProps<"/panel/emails
 
   if (emails.length === 0) {
     return (
-      <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-muted">
+      <p className="rounded-xl border border-dashed border-line px-6 py-12 text-center text-muted">
         Todavía no se mandó ningún email.
       </p>
     );
@@ -99,7 +99,7 @@ async function Emails({ searchParams }: { searchParams: PageProps<"/panel/emails
         {selected ? (
           <EmailPreview subject={selected.subject} to={selected.to} html={selected.html} />
         ) : (
-          <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-muted">
+          <p className="rounded-xl border border-dashed border-line px-6 py-12 text-center text-muted">
             Elegí un email para ver cómo le llegó.
           </p>
         )}

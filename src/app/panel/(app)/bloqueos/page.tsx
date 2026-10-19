@@ -15,13 +15,13 @@ export default function TimeOffPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Bloqueos de agenda</h1>
-        <p className="mt-1 max-w-2xl text-muted">
+        <h1 className="display-type text-5xl text-accent sm:text-6xl">Bloqueos de agenda</h1>
+        <p className="mt-4 max-w-2xl text-muted">
           Feriados, vacaciones o un rato en el que no vas a atender. Mientras dure un bloqueo, nadie
           puede reservar en ese período.
         </p>
       </header>
-      <Suspense fallback={<div className="h-80 animate-pulse rounded-2xl bg-border/60" />}>
+      <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-card" />}>
         <TimeOffList />
       </Suspense>
     </div>
@@ -39,7 +39,7 @@ async function TimeOffList() {
       <section>
         <h2 className="mb-3 font-semibold">Próximos bloqueos</h2>
         {blocks.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border px-6 py-10 text-center text-muted">
+          <p className="rounded-xl border border-dashed border-line px-6 py-10 text-center text-muted">
             No hay bloqueos programados.
           </p>
         ) : (

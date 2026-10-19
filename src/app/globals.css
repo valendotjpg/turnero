@@ -1,41 +1,49 @@
 @import "tailwindcss";
 
-:root {
-  /* Selectores de fecha y hora, barras de scroll, etc. siguen el tema. */
-  color-scheme: light dark;
-  --background: #f6f5f3;
-  --foreground: #1c1917;
-  --card: #ffffff;
-  --muted: #6b6560;
-  --border: #e4e1dd;
-  --accent: #0f766e;
-  --accent-foreground: #ffffff;
-  --accent-soft: #e0f2ef;
-  --danger: #b42318;
-  --danger-soft: #fdecea;
-}
+/* =============================================================
+   Sistema visual: "cuero y cobre"
+   =============================================================
+   Ver docs/DESIGN.md. Estructura de afiche (lienzo oscuro, un único
+   color de acción, tipografía condensada enorme, todo plano), con una paleta
+   propia de un negocio de barrio: espresso, cuero, cobre y crema.
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0f0e0d;
-    --foreground: #f3f2f0;
-    --card: #1a1917;
-    --muted: #a39e98;
-    --border: #2e2b28;
-    --accent: #2dd4bf;
-    --accent-foreground: #04201d;
-    --accent-soft: #10302c;
-    --danger: #f97066;
-    --danger-soft: #3a1512;
-  }
+   Reglas:
+   - El cobre es la única señal de color: acciones, estado activo y títulos.
+     Nunca para texto corrido ni bordes.
+   - Sin sombras ni degradés: la jerarquía sale del contraste y la escala.
+   - Sólo tema oscuro: el lienzo oscuro es la base de la identidad.
+   Contrastes verificados (WCAG): texto ≥ 7:1, cobre sobre cuero 5,7:1, texto
+   del botón sobre cobre 6,4:1, borde de campos ≥ 3,4:1.
+   ============================================================= */
+
+:root {
+  color-scheme: dark;
+
+  --background: #1a120c; /* espresso: el lienzo */
+  --card: #2b1d14; /* cuero: superficies y tarjetas */
+  --nav: #000000; /* barra superior */
+  --foreground: #fbf6f0; /* hueso: texto */
+  --muted: #c4a88e; /* tabaco claro: texto secundario */
+  --soft: #f5dcc2; /* crema: opciones sin elegir, contrapunto suave */
+  --border: #000000; /* filetes de tarjetas */
+  --line: #8a6c57; /* borde de campos y botones fantasma (≥ 3:1) */
+  --accent: #f2742b; /* cobre: la única señal de acción */
+  --accent-foreground: #1a120c;
+  --accent-soft: #3d2414;
+  /* Los errores no son parte de la marca, pero la app los necesita. */
+  --danger: #ff8b73;
+  --danger-soft: #3b1a14;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-nav: var(--nav);
   --color-muted: var(--muted);
+  --color-soft: var(--soft);
   --color-border: var(--border);
+  --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent-soft: var(--accent-soft);
@@ -43,6 +51,26 @@
   --color-danger-soft: var(--danger-soft);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-anton);
+}
+
+/* Títulos de afiche: condensados, en mayúsculas, interlineado muy cerrado y
+   tracking apenas abierto para que las letras no se peguen. Las mayúsculas de
+   Anton ocupan casi todo el cuerpo: con menos de 0.9 las líneas se pisan. */
+@utility display-type {
+  font-family: var(--font-display);
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 0.9;
+  letter-spacing: 0.02em;
+}
+
+/* Rótulo chico en mayúsculas, como "◂ PASO 1 ▸". */
+@utility eyebrow {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 body {
@@ -59,6 +87,12 @@ html {
   scrollbar-gutter: stable;
 }
 
+/* Al saltar a un #ancla, que la barra fija (3,5rem) no tape el título. */
 [id] {
-  scroll-margin-top: 1.5rem;
+  scroll-margin-top: 5rem;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }

@@ -14,13 +14,13 @@ export default function SchedulePage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Horarios de atención</h1>
-        <p className="mt-1 max-w-2xl text-muted">
+        <h1 className="display-type text-5xl text-accent sm:text-6xl">Horarios de atención</h1>
+        <p className="mt-4 max-w-2xl text-muted">
           Tus clientes sólo pueden reservar dentro de estas franjas. Para un horario cortado, agregá
           más de una franja en el mismo día. Cambiar los horarios no cancela los turnos ya dados.
         </p>
       </header>
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-border/60" />}>
+      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-card" />}>
         <Schedule />
       </Suspense>
     </div>

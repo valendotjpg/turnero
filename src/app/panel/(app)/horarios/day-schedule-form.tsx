@@ -64,7 +64,7 @@ export function DayScheduleForm({
           {ranges.map((range, i) => (
             <fieldset
               key={range.key}
-              className="flex items-center gap-1.5 rounded-xl border border-border bg-background px-2 py-1"
+              className="flex items-center gap-1.5 rounded-[15px] border border-line bg-background px-2 py-1"
             >
               <legend className="sr-only">Franja {i + 1}</legend>
               <input
@@ -102,7 +102,7 @@ export function DayScheduleForm({
             <button
               type="button"
               onClick={addRange}
-              className="rounded-xl px-2 py-1 text-sm font-medium text-accent hover:bg-accent-soft"
+              className="eyebrow rounded-[15px] px-2 py-1 text-accent hover:bg-accent-soft"
             >
               + Franja
             </button>

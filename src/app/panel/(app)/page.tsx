@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
 import { Suspense, type ReactNode } from "react";
-import { button, card } from "@/components/styles";
+import { button, card, pill } from "@/components/styles";
 import { weekdayOf } from "@/lib/availability";
 import {
   addDays,
@@ -24,7 +24,7 @@ export const metadata: Metadata = { title: "Agenda" };
 
 export default function AgendaPage({ searchParams }: PageProps<"/panel">) {
   return (
-    <Suspense fallback={<div className="h-96 animate-pulse rounded-2xl bg-border/60" />}>
+    <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-card" />}>
       <Agenda searchParams={searchParams} />
     </Suspense>
   );
@@ -32,9 +32,9 @@ export default function AgendaPage({ searchParams }: PageProps<"/panel">) {
 
 const STATUS = {
   CONFIRMED: { label: "Confirmado", className: "bg-accent-soft text-accent" },
-  COMPLETED: { label: "Realizado", className: "bg-border text-foreground" },
+  COMPLETED: { label: "Realizado", className: "bg-background text-soft" },
   NO_SHOW: { label: "Ausente", className: "bg-danger-soft text-danger" },
-  CANCELLED: { label: "Cancelado", className: "bg-border text-muted" },
+  CANCELLED: { label: "Cancelado", className: "bg-background text-muted" },
 } as const;
 
 async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["searchParams"] }) {
@@ -60,8 +60,8 @@ async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["sea
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-sm text-muted">{date === today ? "Hoy" : "Agenda"}</p>
-          <h1 className="text-2xl font-semibold tracking-tight first-letter:uppercase">
+          <p className="eyebrow text-accent">{date === today ? "◂ Hoy ▸" : "◂ Agenda ▸"}</p>
+          <h1 className="display-type mt-3 text-4xl text-foreground sm:text-5xl">
             {formatDateLong(date)}
           </h1>
           <p className="mt-1 text-sm text-muted">
@@ -110,30 +110,29 @@ async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["sea
               <Link
                 href={dayHref(d)}
                 aria-current={selected ? "date" : undefined}
-                className={`flex flex-col items-center rounded-xl border py-2 text-center transition-colors ${
-                  selected
-                    ? "border-accent bg-accent text-accent-foreground"
-                    : "border-border bg-card hover:border-accent"
-                }`}
+                className={`${pill(selected)} flex flex-col items-center gap-0.5 py-2 text-center`}
               >
-                <span className="text-xs uppercase">{formatWeekdayShort(d)}</span>
-                <span className={`text-lg font-semibold leading-tight ${d === today && !selected ? "text-accent" : ""}`}>
+                <span className="eyebrow !text-[0.6875rem]">{formatWeekdayShort(d)}</span>
+                <span className={`display-type text-3xl ${d === today && !selected ? "text-accent" : ""}`}>
                   {d.slice(8)}
                 </span>
-                <span className={`text-xs ${selected ? "" : "text-muted"}`}>
-                  {count === 0 ? (
-                    <>
-                      <span aria-hidden>—</span>
-                      <span className="sr-only">sin turnos</span>
-                    </>
-                  ) : (
-                    <>
-                      {count}
-                      {/* En celular no entra la palabra: queda sólo para lectores de pantalla. */}
-                      <span className="sr-only sm:not-sr-only"> {count === 1 ? "turno" : "turnos"}</span>
-                    </>
-                  )}
-                </span>
+                {count === 0 ? (
+                  <span className={`text-xs ${selected ? "" : "text-muted"}`}>
+                    <span aria-hidden>—</span>
+                    <span className="sr-only">sin turnos</span>
+                  </span>
+                ) : (
+                  // Cantidad de turnos como número en un círculo; la palabra queda
+                  // para lectores de pantalla.
+                  <span
+                    className={`flex size-5 items-center justify-center rounded-full text-[0.6875rem] font-semibold ${
+                      selected ? "bg-accent-foreground text-accent" : "bg-accent-soft text-soft"
+                    }`}
+                  >
+                    {count}
+                    <span className="sr-only"> {count === 1 ? "turno" : "turnos"}</span>
+                  </span>
+                )}
               </Link>
             </li>
           );
@@ -141,7 +140,7 @@ async function Agenda({ searchParams }: { searchParams: PageProps<"/panel">["sea
       </ul>
 
       {timeOff.map((t) => (
-        <p key={t.id} className="rounded-xl border border-dashed border-border px-4 py-3 text-sm">
+        <p key={t.id} className="rounded-xl border border-dashed border-line px-4 py-3 text-sm">
           <span className="font-medium">Agenda bloqueada</span>{" "}
           <span className="text-muted">
             {describeBlock(t.startsAt, t.endsAt, date, timezone)}
@@ -228,7 +227,7 @@ function describeBlock(startsAt: Date, endsAt: Date, date: string, timezone: str
 
 function EmptyState({ children }: { children: ReactNode }) {
   return (
-    <p className="rounded-2xl border border-dashed border-border px-6 py-12 text-center text-muted">
+    <p className="rounded-xl border border-dashed border-line px-6 py-12 text-center text-muted">
       {children}
     </p>
   );

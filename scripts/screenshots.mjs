@@ -53,16 +53,43 @@ const login = async (page) => {
   await page.getByRole("button", { name: "Ingresar" }).click();
   await page.waitForURL(`${BASE_URL}/panel`);
   await page.getByText(/turnos?$|Sin turnos/).first().waitFor();
+  // Abre el día de la semana con más turnos (hoy puede ser un día cerrado).
+  const busiest = await page.locator('ul[aria-label="Semana"] a').evaluateAll((links) =>
+    links
+      // La cantidad está en el círculo del día (su primer nodo de texto).
+      .map((a) => ({ href: a.href, count: Number(a.querySelector(".rounded-full")?.firstChild?.textContent ?? 0) }))
+      .sort((x, y) => y.count - x.count)[0],
+  );
+  if (busiest?.count) {
+    await page.goto(busiest.href);
+    await page.getByText(/\d+ turnos?$/).first().waitFor();
+  }
 };
 
 await mkdir(OUT, { recursive: true });
 
 try {
+  // 0. Inicio.
+  const home = await newPage(DESKTOP);
+  await home.goto(BASE_URL);
+  await shot(home, "00-inicio");
+
   // 1. Reserva: servicio y día elegidos, con los horarios libres a la vista.
   const booking = await newPage(DESKTOP);
   await booking.goto(`${BASE_URL}/reservar/barberia-demo`);
   await booking.getByRole("link", { name: /Corte de pelo/ }).click();
-  await booking.locator("#dia a").nth(3).click(); // el cuarto día con atención
+  // De los primeros días con atención, el que tenga más horarios libres (así
+  // la captura no cae justo en un día con un bloqueo de muestra).
+  await booking.locator("#dia a").first().waitFor();
+  const dayLinks = await booking.locator("#dia a").evaluateAll((links) => links.slice(0, 5).map((a) => a.href));
+  let bestDay = dayLinks[0];
+  let mostSlots = -1;
+  for (const href of dayLinks) {
+    await booking.goto(href);
+    const slots = await booking.locator("#horario a").count();
+    if (slots > mostSlots) [bestDay, mostSlots] = [href, slots];
+  }
+  await booking.goto(bestDay);
   await booking.locator("#horario a").first().waitFor();
   await booking.evaluate(() => window.scrollTo(0, 0));
   await shot(booking, "01-reserva", { fullPage: true });
@@ -75,7 +102,7 @@ try {
   await mobileBooking.getByLabel("Email").fill("ana@example.com");
   await mobileBooking.getByRole("button", { name: "Confirmar turno" }).click();
   await mobileBooking.waitForURL(/\/turno\//);
-  await mobileBooking.getByText(/Tu turno está reservado/).waitFor();
+  await mobileBooking.getByText(/Turno reservado/).waitFor();
   await shot(mobileBooking, "02-turno-confirmado");
 
   // 3. Agenda del panel, en escritorio y en celular.

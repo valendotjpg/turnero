@@ -26,7 +26,7 @@
 > Para entrar al panel de la demo: `duenio@barberia-demo.test` / `turnero-demo`. Los datos se reinician todos los días y los emails no se envían: se pueden ver desde el panel (sección *Emails*) y desde la página de cada turno.
 
 <p align="center">
-  <img src="docs/screenshots/01-reserva.png" alt="Página de reservas: servicio, día y horarios libres" width="820">
+  <img src="docs/screenshots/00-inicio.png" alt="Página de inicio de Turnero" width="820">
 </p>
 
 ---
@@ -55,6 +55,10 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 
 ## Capturas
 
+<p align="center">
+  <img src="docs/screenshots/01-reserva.png" alt="Página de reservas: servicio, día y horarios libres" width="720">
+</p>
+
 | Agenda del negocio | En el celular |
 | --- | --- |
 | <img src="docs/screenshots/03-agenda.png" alt="Agenda del día en el panel" width="560"> | <img src="docs/screenshots/04-agenda-celular.png" alt="Agenda en el celular" width="220"> |
@@ -66,6 +70,8 @@ Una barbería, un consultorio o un estudio de uñas suelen manejar los turnos po
 <p align="center">
   <img src="docs/screenshots/05-horarios.png" alt="Horarios de atención con horario cortado" width="720">
 </p>
+
+El sistema visual ("cuero y cobre": lienzo oscuro, un único acento, tipografía condensada de afiche) está documentado en [`docs/DESIGN.md`](docs/DESIGN.md).
 
 Las capturas las genera [`npm run screenshots`](scripts/screenshots.mjs), que recorre la app con un navegador real: reserva un turno, entra al panel y abre el email. Sirve también como prueba de humo de punta a punta.
 

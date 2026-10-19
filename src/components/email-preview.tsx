@@ -4,7 +4,7 @@
  */
 export function EmailPreview({ subject, to, html }: { subject: string; to: string; html: string }) {
   return (
-    <figure className="overflow-hidden rounded-2xl border border-border bg-card">
+    <figure className="overflow-hidden rounded-xl border border-border bg-card">
       <figcaption className="border-b border-border px-4 py-3 text-sm">
         <p className="font-semibold">{subject}</p>
         <p className="text-muted">Para: {to}</p>

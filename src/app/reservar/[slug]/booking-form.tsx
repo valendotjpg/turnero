@@ -79,7 +79,7 @@ export function BookingForm({ businessSlug, serviceId, startsAt, backHref }: Boo
         disabled={pending}
         className={`${button.primary} w-full py-3`}
       >
-        {pending ? "Reservando…" : "Confirmar turno"}
+        {pending ? "Reservando…" : "Confirmar turno ▸"}
       </button>
     </form>
   );

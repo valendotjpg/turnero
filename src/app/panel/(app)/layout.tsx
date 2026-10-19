@@ -18,12 +18,12 @@ export const metadata: Metadata = {
 export default function PanelLayout({ children }: LayoutProps<"/panel">) {
   return (
     <div className="flex flex-1 flex-col">
-      <header className="border-b border-border bg-card">
+      <header className="bg-nav">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 pt-4">
-          <Link href="/panel" className="text-sm font-semibold tracking-wide text-accent uppercase">
+          <Link href="/panel" className="display-type text-2xl text-accent">
             Turnero
           </Link>
-          <Suspense fallback={<div className="h-8 w-40 animate-pulse rounded-lg bg-border/60" />}>
+          <Suspense fallback={<div className="h-8 w-40 animate-pulse rounded-lg bg-card" />}>
             <UserMenu />
           </Suspense>
         </div>
