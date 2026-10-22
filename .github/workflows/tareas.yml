@@ -25,19 +25,41 @@ jobs:
     if: vars.APP_URL != ''
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    defaults:
+      run:
+        shell: bash # con -o pipefail: si falla curl, falla el paso aunque siga tee
     env:
       APP_URL: ${{ vars.APP_URL }}
       CRON_SECRET: ${{ secrets.CRON_SECRET }}
 
     steps:
+      # Antes de mandar el secreto, comprueba que APP_URL es esta app: sin
+      # credenciales, /api/cron tiene que rechazar el pedido con su propio
+      # JSON. Una URL equivocada (otro sitio, una página de error) corta acá.
+      - name: Verificar APP_URL
+        run: |
+          case "$APP_URL" in
+            https://*) ;;
+            *) echo "::error::APP_URL tiene que empezar con https://"; exit 1 ;;
+          esac
+          status=$(curl --silent --max-time 30 --output body.json --write-out "%{http_code}" "$APP_URL/api/cron")
+          if [ "$status" != 401 ] || ! jq -e '.error == "No autorizado"' body.json > /dev/null 2>&1; then
+            echo "::error::$APP_URL no parece ser Turnero (HTTP $status sin la respuesta esperada). No se envió el secreto."
+            exit 1
+          fi
+
+      # Además de exigir HTTP 2xx, valida que la respuesta sea el JSON de la
+      # API: un 200 con HTML no cuenta como éxito.
       - name: Emails pendientes y recordatorios
         if: "${{ github.event.schedule == '*/10 * * * *' || inputs.tarea == 'emails' }}"
         run: |
           curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron"
+            -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron" | tee body.json
+          jq -e 'has("reminders") and has("prunedRateLimits")' body.json > /dev/null
 
       - name: Reiniciar la demo
         if: "${{ github.event.schedule == '0 9 * * *' || inputs.tarea == 'reiniciar-demo' }}"
         run: |
           curl --fail-with-body --silent --show-error --max-time 60 \
-            -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/demo-reset"
+            -H "Authorization: Bearer $CRON_SECRET" "$APP_URL/api/cron/demo-reset" | tee body.json
+          jq -e '.reset == true' body.json > /dev/null
